@@ -3,6 +3,8 @@
  * 参考：https://open.bigmodel.cn/dev/api#chat/completions
  */
 
+/// <reference types="vite/client" />
+
 export interface PoemGenerationConfig {
   style?: string          // 风格：豪放、婉约、清新、深沉
   season?: string         // 季节：春、夏、秋、冬
@@ -16,6 +18,7 @@ export interface GeneratedPoem {
   dynasty: string
   content: string[]
   ai_generated: boolean
+  tags?: string[]
 }
 
 // API 端点
@@ -24,39 +27,64 @@ const MODEL_ID = 'glm-4'; // 智谱 GLM-4 模型
 
 /**
  * 获取 API Key
- * 优先级：环境变量 > localStorage
+ * 优先级：环境变量 > 安全存储 > localStorage（降级）
  */
+let _cachedApiKey: string = ''
+
 export function getApiKey(): string {
   // 1. 从环境变量获取
   if (import.meta.env.VITE_ZHIPU_AI_API_KEY) {
     return import.meta.env.VITE_ZHIPU_AI_API_KEY;
   }
   
-  // 2. 从 localStorage 获取（用户手动配置）
+  // 2. 从缓存获取（由 loadApiKeyFromSecureStorage 填充）
+  if (_cachedApiKey) {
+    return _cachedApiKey;
+  }
+  
+  // 3. 降级：从 localStorage 获取（非 Electron 环境）
   const storedKey = localStorage.getItem('zhipu_ai_api_key');
   if (storedKey) {
     return storedKey;
   }
   
-  // 3. 从 OpenClaw 配置获取
-  // 注意：这需要在预构建脚本中实现
-  // 这里留空，后续添加
-  
   return '';
 }
 
 /**
- * 保存 API Key
+ * 从安全存储异步加载 API Key（应用启动时调用）
  */
-export function saveApiKey(key: string): void {
-  localStorage.setItem('zhipu_ai_api_key', key);
+export async function loadApiKeyFromSecureStorage(): Promise<string> {
+  if (window.electronAPI?.loadApiKey) {
+    _cachedApiKey = await window.electronAPI.loadApiKey();
+    return _cachedApiKey;
+  }
+  return getApiKey();
+}
+
+/**
+ * 保存 API Key（优先使用安全存储）
+ */
+export async function saveApiKey(key: string): Promise<void> {
+  _cachedApiKey = key;
+  if (window.electronAPI?.saveApiKey) {
+    await window.electronAPI.saveApiKey(key);
+  } else {
+    // 降级：非 Electron 环境使用 localStorage
+    localStorage.setItem('zhipu_ai_api_key', key);
+  }
 }
 
 /**
  * 清除 API Key
  */
-export function clearApiKey(): void {
-  localStorage.removeItem('zhipu_ai_api_key');
+export async function clearApiKey(): Promise<void> {
+  _cachedApiKey = '';
+  if (window.electronAPI?.clearApiKey) {
+    await window.electronAPI.clearApiKey();
+  } else {
+    localStorage.removeItem('zhipu_ai_api_key');
+  }
 }
 
 /**
@@ -185,9 +213,9 @@ export async function generatePoem(config: PoemGenerationConfig = {}): Promise<G
 
     // 为 AI 生成的诗词添加标签
     const tags: string[] = [];
-    if (style) tags.push(style);
-    if (season && season !== '') tags.push(season);
-    if (theme && theme !== '') tags.push(theme);
+    if (config.style) tags.push(config.style);
+    if (config.season && config.season !== '' && config.season !== '不限') tags.push(config.season);
+    if (config.theme && config.theme !== '' && config.theme !== '不限') tags.push(config.theme);
     tags.push('AI生成');
 
     return {

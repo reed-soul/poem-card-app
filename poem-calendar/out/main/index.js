@@ -1,6 +1,7 @@
 "use strict";
 const electron = require("electron");
 const path = require("path");
+const fs = require("fs");
 function _interopNamespaceDefault(e) {
   const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
   if (e) {
@@ -18,7 +19,9 @@ function _interopNamespaceDefault(e) {
   return Object.freeze(n);
 }
 const path__namespace = /* @__PURE__ */ _interopNamespaceDefault(path);
+const fs__namespace = /* @__PURE__ */ _interopNamespaceDefault(fs);
 let mainWindow = null;
+const getApiKeyPath = () => path__namespace.join(electron.app.getPath("userData"), ".api_key");
 function createWindow() {
   mainWindow = new electron.BrowserWindow({
     width: 400,
@@ -65,5 +68,42 @@ electron.ipcMain.handle("window:maximize", () => {
     mainWindow.unmaximize();
   } else {
     mainWindow?.maximize();
+  }
+});
+electron.ipcMain.handle("apiKey:save", (_event, key) => {
+  try {
+    if (electron.safeStorage.isEncryptionAvailable()) {
+      const encrypted = electron.safeStorage.encryptString(key);
+      fs__namespace.writeFileSync(getApiKeyPath(), encrypted);
+    } else {
+      fs__namespace.writeFileSync(getApiKeyPath(), Buffer.from(key, "utf-8"));
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+electron.ipcMain.handle("apiKey:load", () => {
+  try {
+    const keyPath = getApiKeyPath();
+    if (!fs__namespace.existsSync(keyPath)) return "";
+    const data = fs__namespace.readFileSync(keyPath);
+    if (electron.safeStorage.isEncryptionAvailable()) {
+      return electron.safeStorage.decryptString(data);
+    }
+    return data.toString("utf-8");
+  } catch {
+    return "";
+  }
+});
+electron.ipcMain.handle("apiKey:clear", () => {
+  try {
+    const keyPath = getApiKeyPath();
+    if (fs__namespace.existsSync(keyPath)) {
+      fs__namespace.unlinkSync(keyPath);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
   }
 });

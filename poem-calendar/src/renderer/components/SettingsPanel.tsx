@@ -8,10 +8,9 @@ import {
   exportSettings 
 } from '../types/settings'
 import { 
-  generatePoem, 
+  GeneratedPoem,
   testApiKey, 
   saveApiKey, 
-  isApiKeyConfigured,
   getApiConfig 
 } from '../services/zhipuAI'
 
@@ -49,7 +48,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
   const [activeTab, setActiveTab] = useState<'preferences' | 'display' | 'background' | 'ai'>('preferences')
   const [isTestingApiKey, setIsTestingApiKey] = useState(false)
-  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string; samplePoem?: GeneratedPoem } | null>(null)
 
   // 加载设置
   useEffect(() => {
@@ -122,7 +121,7 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       setApiKeyTestResult(result)
       
       // 如果测试成功，保存 API Key
-      if (result.success && result.success) {
+      if (result.success) {
         saveApiKey(settings.ai.apiKey)
       }
     } catch (error: any) {

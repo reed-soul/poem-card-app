@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import PoemCard from './components/PoemCard'
@@ -6,16 +6,19 @@ import SettingsPanel from './components/SettingsPanel'
 import WindowControls from './components/WindowControls'
 import poems from './data/poems精选.json'
 import { getNearestSolarTerm, recommendBySolarTerm } from './utils/solarTerm'
-import { generatePoem, type GeneratedPoem, isApiKeyConfigured } from './services/zhipuAI'
+import { generatePoem, loadApiKeyFromSecureStorage } from './services/zhipuAI'
 import { loadSettings, UserSettings } from './types/settings'
 
 // 类型声明
 declare global {
   interface Window {
     electronAPI?: {
-      minimizeWindow: () => void
-      closeWindow: () => void
-      maximizeWindow: () => void
+      close: () => void
+      minimize: () => void
+      maximize: () => void
+      saveApiKey: (key: string) => Promise<{ success: boolean; message?: string }>
+      loadApiKey: () => Promise<string>
+      clearApiKey: () => Promise<{ success: boolean; message?: string }>
     }
   }
 }
@@ -34,6 +37,9 @@ function App() {
     // 加载用户设置
     const loadedSettings = loadSettings()
     setSettings(loadedSettings)
+    
+    // 加载安全存储的 API Key
+    loadApiKeyFromSecureStorage()
     
     // 设置今天的日期
     const now = new Date()
@@ -137,7 +143,7 @@ function App() {
   /**
    * 从本地诗词库获取诗词
    */
-  const getLocalPoem = (date: Date, term: any, dayOfYear: number) => {
+  const getLocalPoem = (_date: Date, term: any, dayOfYear: number) => {
     // 根据用户偏好筛选诗词
     let filteredPoems = [...poems]
     

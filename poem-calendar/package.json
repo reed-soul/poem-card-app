@@ -2,6 +2,7 @@
   "name": "poem-calendar",
   "version": "0.1.0",
   "description": "每日一首诗词，与天地对话 - 跨端桌面诗词卡片应用",
+  "type": "module",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -32,8 +33,9 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.4.7",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "framer-motion": "^12.4.7"
+    "react-dom": "^19.0.0"
   }
 }
