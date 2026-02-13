@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "description": "每日一首诗词，与天地对话 - 跨端桌面诗词卡片应用",
   "type": "module",
+  "packageManager": "pnpm@10.27.0",
   "main": "out/main/index.js",
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "dev": "electron-vite dev",
     "build": "electron-vite build && electron-builder",
     "preview": "electron-vite preview"
