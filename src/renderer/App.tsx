@@ -16,6 +16,8 @@ declare global {
       close: () => void
       minimize: () => void
       maximize: () => void
+      enterSettings: () => Promise<void>
+      leaveSettings: () => Promise<void>
       saveApiKey: (key: string) => Promise<{ success: boolean; message?: string }>
       loadApiKey: () => Promise<string>
       clearApiKey: () => Promise<{ success: boolean; message?: string }>
@@ -74,16 +76,8 @@ function App() {
   }, [])
 
   // 切换到下一首诗词（用于多首诗词显示）
-  const [currentPoemIndex, setCurrentPoemIndex] = useState(0)
-
-  const nextPoem = async () => {
-    const newIndex = (currentPoemIndex + 1) % Math.min(settings.display.poemsPerDay, poems.length)
-    setCurrentPoemIndex(newIndex)
-    
-    const now = new Date()
-    const term = getNearestSolarTerm(now)
-    await recommendOrGeneratePoem(now, term, newIndex)
-  }
+  // 切换到下一首诗词（用于多首诗词显示）- 预留功能
+  // const [currentPoemIndex] = useState(0)
 
   /**
    * 推荐或生成诗词
@@ -203,7 +197,10 @@ function App() {
       
       {/* 设置按钮 */}
       <button
-        onClick={() => setShowSettings(true)}
+        onClick={async () => {
+          await window.electronAPI?.enterSettings()
+          setShowSettings(true)
+        }}
         className="absolute top-4 left-4 z-20 p-2 bg-white/10 dark:bg-black/10 backdrop-blur-md rounded-lg hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
         title="设置"
       >
@@ -211,17 +208,6 @@ function App() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37-2.37a1.724 1.724 0 001.065-2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 001.066 2.573c-.426 1.756-2.924 1.756 3.35 0a1.724 1.724 0 002.572 1.065c-.426 1.756-2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c1.756.426 2.924 1.756 3.35zM12 18a.75.75 0 01.75-.75V7a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v10.5c0 .414.336.75.75.75a.75.75 0 01.75-.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75z" />
         </svg>
       </button>
-
-      {/* 加载状态 */}
-      {isGenerating && (
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
-          <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-2xl p-8 text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-700 dark:text-gray-300">AI 正在生成诗词...</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">这需要几秒钟时间</p>
-          </div>
-        </div>
-      )}
 
       {/* 错误提示 */}
       {error && (
@@ -244,6 +230,7 @@ function App() {
         showSolarTerm={settings.display.showSolarTerm}
         showDynasty={settings.display.showDynasty}
         showAuthor={settings.display.showAuthor}
+        loading={isGenerating}
       />
       
       {/* 设置面板 */}

@@ -3,6 +3,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 
 let mainWindow: BrowserWindow | null = null
+let savedBounds: { width: number; height: number; x: number; y: number } | null = null
 
 // API Key 安全存储路径
 const getApiKeyPath = () => path.join(app.getPath('userData'), '.api_key')
@@ -62,6 +63,31 @@ ipcMain.handle('window:maximize', () => {
   } else {
     mainWindow?.maximize()
   }
+})
+
+// 进入设置模式：记住当前尺寸，扩大窗口
+ipcMain.handle('window:enterSettings', () => {
+  if (!mainWindow) return
+  const bounds = mainWindow.getBounds()
+  savedBounds = bounds
+  const settingsWidth = Math.max(bounds.width, 820)
+  const settingsHeight = Math.max(bounds.height, 640)
+  // 居中调整
+  const deltaX = Math.round((settingsWidth - bounds.width) / 2)
+  const deltaY = Math.round((settingsHeight - bounds.height) / 2)
+  mainWindow.setBounds({
+    x: bounds.x - deltaX,
+    y: bounds.y - deltaY,
+    width: settingsWidth,
+    height: settingsHeight,
+  }, true) // true = animate
+})
+
+// 离开设置模式：恢复原始尺寸
+ipcMain.handle('window:leaveSettings', () => {
+  if (!mainWindow || !savedBounds) return
+  mainWindow.setBounds(savedBounds, true)
+  savedBounds = null
 })
 
 // IPC handlers - API Key 安全存储

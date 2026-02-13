@@ -87,9 +87,21 @@ export function loadSettings(): UserSettings {
   try {
     const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (stored) {
+      const parsed = JSON.parse(stored);
       return {
         ...DEFAULT_SETTINGS,
-        ...JSON.parse(stored),
+        ...parsed,
+        preferences: { ...DEFAULT_SETTINGS.preferences, ...(parsed.preferences || {}) },
+        display: { ...DEFAULT_SETTINGS.display, ...(parsed.display || {}) },
+        background: { ...DEFAULT_SETTINGS.background, ...(parsed.background || {}) },
+        ai: { 
+          ...DEFAULT_SETTINGS.ai, 
+          ...(parsed.ai || {}),
+          generation: { 
+            ...DEFAULT_SETTINGS.ai.generation, 
+            ...(parsed.ai?.generation || {}) 
+          } 
+        },
       };
     }
   } catch (error) {

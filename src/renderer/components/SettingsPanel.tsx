@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
+import { motion } from 'framer-motion'
 import { 
   UserSettings, 
   DEFAULT_SETTINGS, 
@@ -50,20 +52,25 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [isTestingApiKey, setIsTestingApiKey] = useState(false)
   const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string; samplePoem?: GeneratedPoem } | null>(null)
 
-  // 加载设置
   useEffect(() => {
-    const loaded = loadSettings()
-    setSettings(loaded)
-  }, [])
+    if (isOpen) {
+      const loaded = loadSettings()
+      setSettings(loaded)
+    }
+  }, [isOpen])
 
-  // 保存设置
   const handleSave = () => {
     saveSettings(settings)
+    window.electronAPI?.leaveSettings()
     onClose()
     window.location.reload()
   }
 
-  // 重置设置
+  const handleClose = () => {
+    window.electronAPI?.leaveSettings()
+    onClose()
+  }
+
   const handleReset = () => {
     if (confirm('确定要重置所有设置吗？')) {
       resetSettings()
@@ -72,12 +79,10 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   }
 
-  // 导出设置
   const handleExport = () => {
     exportSettings(settings)
   }
 
-  // 导入设置
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
@@ -85,12 +90,9 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       reader.onload = async (e) => {
         try {
           const imported = JSON.parse(e.target?.result as string)
-          
-          // 保存 API Key
           if (imported.ai?.apiKey) {
             saveApiKey(imported.ai.apiKey)
           }
-          
           setSettings({
             ...DEFAULT_SETTINGS,
             ...imported,
@@ -103,7 +105,6 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   }
 
-  // 测试智谱 API Key
   const handleTestApiKey = async () => {
     if (!settings.ai.apiKey) {
       setApiKeyTestResult({
@@ -119,8 +120,6 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     try {
       const result = await testApiKey(settings.ai.apiKey)
       setApiKeyTestResult(result)
-      
-      // 如果测试成功，保存 API Key
       if (result.success) {
         saveApiKey(settings.ai.apiKey)
       }
@@ -138,60 +137,68 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   const apiConfig = getApiConfig()
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+  return ReactDOM.createPortal(
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="fixed inset-0 z-[9999] bg-paper text-ink flex flex-col font-serif"
+    >
         {/* 标题栏 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">
-            ⚙️ 设置
+        <div className="flex items-center justify-between px-8 py-6 border-b border-muted/10">
+          <h2 className="text-2xl font-bold tracking-wide text-ink">
+            设置
           </h2>
           <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            onClick={handleClose}
+            className="text-muted hover:text-ink transition-colors p-2 rounded-full hover:bg-muted/10"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* 选项卡 */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <div className="flex px-8 border-b border-muted/10 gap-8 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden">
           {[
-            { id: 'preferences', label: '🎯 偏好' },
-            { id: 'display', label: '🖥️ 显示' },
-            { id: 'background', label: '🎨 背景' },
-            { id: 'ai', label: '🤖 AI' },
+            { id: 'preferences', label: '偏好' },
+            { id: 'display', label: '显示' },
+            { id: 'background', label: '背景' },
+            { id: 'ai', label: '智能' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${
+              className={`py-4 text-base tracking-widest transition-all relative ${
                 activeTab === tab.id
-                  ? 'text-gray-900 dark:text-gray-100'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+                  ? 'text-ink font-bold'
+                  : 'text-muted hover:text-ink/80'
               }`}
             >
               {tab.label}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-secondary" 
+                />
               )}
             </button>
           ))}
         </div>
 
         {/* 内容区 */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-8 overflow-y-auto flex-1 bg-white/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted/40">
           {/* 偏好设置 */}
           {activeTab === 'preferences' && (
-            <div className="space-y-6">
-              {/* 喜欢的诗人 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  喜欢的诗人
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <section>
+                <label className="block text-lg font-medium text-ink mb-4 flex items-center gap-2">
+                   <span className="w-1 h-4 bg-accent rounded-full inline-block"></span>
+                   喜欢的诗人
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-wrap gap-3">
                   {POPULAR_AUTHORS.map((author) => (
                     <button
                       key={author}
@@ -201,30 +208,27 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           : [...settings.preferences.favoriteAuthors, author];
                         setSettings({
                           ...settings,
-                          preferences: {
-                            ...settings.preferences,
-                            favoriteAuthors: newAuthors,
-                          },
+                          preferences: { ...settings.preferences, favoriteAuthors: newAuthors },
                         });
                       }}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`px-4 py-1.5 rounded-full text-sm transition-all border ${
                         settings.preferences.favoriteAuthors.includes(author)
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-ink text-paper border-ink shadow-md'
+                          : 'bg-white/50 text-ink/70 border-muted/20 hover:border-ink/50'
                       }`}
                     >
                       {author}
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
 
-              {/* 喜欢的季节 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  喜欢的季节
+              <section>
+                <label className="block text-lg font-medium text-ink mb-4 flex items-center gap-2">
+                   <span className="w-1 h-4 bg-accent rounded-full inline-block"></span>
+                   季节主题
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-4 mb-6">
                   {SEASONS.map((season) => (
                     <button
                       key={season}
@@ -234,30 +238,21 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           : [...settings.preferences.favoriteSeasons, season];
                         setSettings({
                           ...settings,
-                          preferences: {
-                            ...settings.preferences,
-                            favoriteSeasons: newSeasons,
-                          },
+                          preferences: { ...settings.preferences, favoriteSeasons: newSeasons },
                         });
                       }}
-                      className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                      className={`px-6 py-2 rounded-lg text-sm transition-all border ${
                         settings.preferences.favoriteSeasons.includes(season)
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-secondary text-white border-secondary shadow-md'
+                          : 'bg-white/50 text-ink/70 border-muted/20 hover:border-secondary/50'
                       }`}
                     >
                       {season}
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {/* 喜欢的主题 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  喜欢的主题
-                </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-3">
                   {THEMES.map((theme) => (
                     <button
                       key={theme}
@@ -267,530 +262,251 @@ export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           : [...settings.preferences.favoriteThemes, theme];
                         setSettings({
                           ...settings,
-                          preferences: {
-                            ...settings.preferences,
-                            favoriteThemes: newThemes,
-                          },
+                          preferences: { ...settings.preferences, favoriteThemes: newThemes },
                         });
                       }}
-                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                      className={`px-3 py-2 rounded-lg text-sm transition-all border ${
                         settings.preferences.favoriteThemes.includes(theme)
-                          ? 'bg-purple-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                          ? 'bg-accent text-white border-accent shadow-sm'
+                          : 'bg-white/50 text-ink/70 border-muted/20 hover:border-accent/50'
                       }`}
                     >
                       {theme}
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             </div>
           )}
 
           {/* 显示设置 */}
           {activeTab === 'display' && (
-            <div className="space-y-6">
-              {/* AI 诗词优先级 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  诗词来源
-                </label>
-                <div className="flex gap-2">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <section>
+                <label className="block text-lg font-medium text-ink mb-4">诗词来源</label>
+                <div className="flex gap-4 p-1 bg-muted/10 rounded-xl">
                   <button
-                    onClick={() => {
-                      setSettings({
-                        ...settings,
-                        ai: {
-                          ...settings.ai,
-                          enabled: false,
-                        },
-                      });
-                    }}
-                    className={`flex-1 px-4 py-3 rounded-lg text-sm transition-colors ${
+                    onClick={() => setSettings({ ...settings, ai: { ...settings.ai, enabled: false } })}
+                    className={`flex-1 px-6 py-3 rounded-lg text-sm transition-all ${
                       !settings.ai.enabled
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        ? 'bg-white shadow-sm text-ink font-bold'
+                        : 'text-muted hover:text-ink'
                     }`}
                   >
-                    本地诗词 ({733}首)
+                    本地精选
                   </button>
                   <button
-                    onClick={() => {
-                      setSettings({
-                        ...settings,
-                        ai: {
-                          ...settings.ai,
-                          enabled: true,
-                        },
-                      });
-                    }}
-                    className={`flex-1 px-4 py-3 rounded-lg text-sm transition-colors ${
+                    onClick={() => setSettings({ ...settings, ai: { ...settings.ai, enabled: true } })}
+                    className={`flex-1 px-6 py-3 rounded-lg text-sm transition-all ${
                       settings.ai.enabled
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        ? 'bg-white shadow-sm text-secondary font-bold'
+                        : 'text-muted hover:text-ink'
                       }`}
                   >
                     AI 智能生成
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  开启 AI 后将优先使用智谱 AI 生成诗词，如果生成失败则回退到本地诗词库。
-                </p>
-              </div>
+               </section>
 
-              {/* 每天显示的诗词数量 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  每天显示的诗词数量
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={settings.display.poemsPerDay}
-                  onChange={(e) => {
-                    const value = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
-                    setSettings({
-                      ...settings,
-                      display: {
-                        ...settings.display,
-                        poemsPerDay: value,
-                      },
-                    });
-                  }}
-                  className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                />
-              </div>
-
-              {/* 显示选项 */}
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={settings.display.showSolarTerm}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        display: {
-                          ...settings.display,
-                          showSolarTerm: e.target.checked,
-                        },
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">显示节气信息</span>
-                </label>
-
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={settings.display.showDynasty}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        display: {
-                          ...settings.display,
-                          showDynasty: e.target.checked,
-                        },
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">显示朝代</span>
-                </label>
-
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={settings.display.showAuthor}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        display: {
-                          ...settings.display,
-                          showAuthor: e.target.checked,
-                        },
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">显示作者</span>
-                </label>
-              </div>
+               <section>
+                 <label className="block text-lg font-medium text-ink mb-4">显示元素</label>
+                 <div className="space-y-3">
+                    {[
+                      { key: 'showSolarTerm', label: '显示节气' },
+                      { key: 'showDynasty', label: '显示朝代' },
+                      { key: 'showAuthor', label: '显示作者' }
+                    ].map(item => (
+                       <label key={item.key} className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-muted/10 cursor-pointer hover:bg-white/80 transition-colors">
+                          <span className="text-ink">{item.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={(settings.display as any)[item.key]}
+                            onChange={(e) => setSettings({
+                              ...settings,
+                              display: { ...settings.display, [item.key]: e.target.checked }
+                            })}
+                            className="w-5 h-5 accent-secondary"
+                          />
+                       </label>
+                    ))}
+                 </div>
+               </section>
             </div>
           )}
 
           {/* 背景设置 */}
           {activeTab === 'background' && (
-            <div className="space-y-6">
-              {/* 背景来源 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  背景图片来源
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setSettings({
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <section className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-2">背景模糊度</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={settings.background.blur}
+                      onChange={(e) => setSettings({
                         ...settings,
-                        background: {
-                          ...settings.background,
-                          source: 'online',
-                        },
-                      });
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                      settings.background.source === 'online'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    在线图片
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettings({
+                        background: { ...settings.background, blur: parseInt(e.target.value) }
+                      })}
+                      className="w-full h-2 bg-muted/20 rounded-lg appearance-none cursor-pointer accent-ink"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-2">遮罩透明度</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={settings.background.opacity}
+                      onChange={(e) => setSettings({
                         ...settings,
-                        background: {
-                          ...settings.background,
-                          source: 'local',
-                        },
-                      });
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                      settings.background.source === 'local'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    本地图片
-                  </button>
-                </div>
-              </div>
-
-              {/* 背景模糊度 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  背景模糊度: {settings.background.blur}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={settings.background.blur}
-                  onChange={(e) => {
-                    setSettings({
-                      ...settings,
-                      background: {
-                        ...settings.background,
-                        blur: parseInt(e.target.value),
-                      },
-                    });
-                  }}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
-
-              {/* 背景透明度 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  背景透明度: {settings.background.opacity}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={settings.background.opacity}
-                  onChange={(e) => {
-                    setSettings({
-                      ...settings,
-                      background: {
-                        ...settings.background,
-                        opacity: parseInt(e.target.value),
-                      },
-                    });
-                  }}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-              </div>
+                        background: { ...settings.background, opacity: parseInt(e.target.value) }
+                      })}
+                      className="w-full h-2 bg-muted/20 rounded-lg appearance-none cursor-pointer accent-ink"
+                    />
+                  </div>
+               </section>
             </div>
           )}
 
           {/* AI 设置 */}
           {activeTab === 'ai' && (
-            <div className="space-y-6">
-              {/* 是否启用 AI */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  启用 AI 智能生成
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={settings.ai.enabled}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        ai: {
-                          ...settings.ai,
-                          enabled: e.target.checked,
-                        },
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">优先使用 AI 生成诗词</span>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  开启后，系统将使用智谱 AI 生成诗词。如果生成失败，将自动回退到本地诗词库（733首）。
-                </p>
-              </div>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <section>
+                 <label className="block text-lg font-medium text-ink mb-4">API 配置</label>
+                 <div className="space-y-4">
+                    <input
+                      type="password"
+                      placeholder="sk-..."
+                      value={settings.ai.apiKey}
+                      onChange={(e) => setSettings({ ...settings, ai: { ...settings.ai, apiKey: e.target.value } })}
+                      disabled={apiConfig.isFromEnv}
+                      className="w-full px-4 py-3 bg-white/50 border border-muted/20 rounded-lg focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary transition-all"
+                    />
+                    <div className="flex justify-between items-center">
+                       <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" className="text-xs text-accent hover:underline">获取 API Key</a>
+                       <button
+                        onClick={handleTestApiKey}
+                        disabled={isTestingApiKey || !settings.ai.apiKey}
+                        className="px-6 py-2 bg-ink text-paper rounded-lg hover:bg-ink/90 transition-colors disabled:opacity-50 text-sm"
+                       >
+                         {isTestingApiKey ? '连接中...' : '测试连通性'}
+                       </button>
+                    </div>
+                    {/* 测试结果反馈区 */}
+                    {apiKeyTestResult && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className={`p-4 rounded-lg text-sm border ${
+                          apiKeyTestResult.success ? 'bg-green-50 border-green-100 text-green-800' : 'bg-red-50 border-red-100 text-red-800'
+                        }`}
+                      >
+                        {apiKeyTestResult.message}
+                      </motion.div>
+                    )}
+                 </div>
+               </section>
 
-              {/* API Key */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  智谱 AI API Key
-                  {apiConfig.isFromEnv && (
-                    <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
-                      环境变量配置（不可编辑）
-                    </span>
-                  )}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    placeholder="输入你的智谱 AI API Key"
-                    value={settings.ai.apiKey}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        ai: {
-                          ...settings.ai,
-                          apiKey: e.target.value,
-                        },
-                      });
-                    }}
-                    disabled={apiConfig.isFromEnv}
-                    className={`flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
-                      apiConfig.isFromEnv ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-60' : ''
-                    }`}
-                  />
-                  <button
-                    onClick={handleTestApiKey}
-                    disabled={isTestingApiKey || !settings.ai.apiKey}
-                    className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium text-sm ${
-                      isTestingApiKey ? 'opacity-50 cursor-wait' : ''
-                    }`}
-                  >
-                    {isTestingApiKey ? '测试中...' : '测试'}
-                  </button>
-                </div>
-                
-                {/* API Key 测试结果 */}
-                {apiKeyTestResult && (
-                  <div className={`mt-2 p-3 rounded-lg text-sm ${
-                    apiKeyTestResult.success
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
-                      : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
-                  }`}>
-                    {apiKeyTestResult.success ? '✅ ' : '❌ '}
-                    {apiKeyTestResult.message}
-                    {apiKeyTestResult.samplePoem && (
-                      <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600 text-xs">
-                        <div className="font-medium">生成的示例：</div>
-                        <div className="mt-1 text-gray-700 dark:text-gray-300">
-                          <div className="font-bold">{apiKeyTestResult.samplePoem.title}</div>
-                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {apiKeyTestResult.samplePoem.dynasty} · {apiKeyTestResult.samplePoem.author}
-                          </div>
-                          <div className="mt-1">
-                            {apiKeyTestResult.samplePoem.content.join('，')}
-                          </div>
+               {settings.ai.enabled && (
+                 <section className="space-y-6 pt-6 border-t border-muted/10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <h3 className="text-lg font-medium text-ink mb-4 flex items-center gap-2">
+                      <span className="w-1 h-4 bg-secondary rounded-full inline-block"></span>
+                      生成配置
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-muted mb-2">风格</label>
+                        <select
+                          value={settings.ai.generation.style}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            ai: { ...settings.ai, generation: { ...settings.ai.generation, style: e.target.value } }
+                          })}
+                          className="w-full px-3 py-2 bg-white/50 border border-muted/20 rounded-lg focus:outline-none focus:border-secondary transition-colors"
+                        >
+                          {AI_STYLES.map(style => <option key={style} value={style}>{style}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-muted mb-2">季节</label>
+                        <select
+                          value={settings.ai.generation.season}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            ai: { ...settings.ai, generation: { ...settings.ai.generation, season: e.target.value } }
+                          })}
+                          className="w-full px-3 py-2 bg-white/50 border border-muted/20 rounded-lg focus:outline-none focus:border-secondary transition-colors"
+                        >
+                          <option value="不限">不限</option>
+                          {SEASONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-muted mb-2">主题</label>
+                        <select
+                          value={settings.ai.generation.theme}
+                          onChange={(e) => setSettings({
+                            ...settings,
+                            ai: { ...settings.ai, generation: { ...settings.ai.generation, theme: e.target.value } }
+                          })}
+                          className="w-full px-3 py-2 bg-white/50 border border-muted/20 rounded-lg focus:outline-none focus:border-secondary transition-colors"
+                        >
+                          <option value="不限">不限</option>
+                          {THEMES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-muted mb-2">长度</label>
+                        <div className="flex gap-2">
+                          {AI_LENGTHS.map(len => (
+                            <button
+                              key={len.value}
+                              onClick={() => setSettings({
+                                ...settings,
+                                ai: { ...settings.ai, generation: { ...settings.ai.generation, length: len.value } }
+                              })}
+                              className={`flex-1 py-2 text-xs rounded-lg border transition-all ${
+                                settings.ai.generation.length === len.value
+                                  ? 'bg-secondary text-white border-secondary'
+                                  : 'bg-white/50 text-muted border-muted/20 hover:border-secondary/50'
+                              }`}
+                            >
+                              {len.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                    )}
-                  </div>
-                )}
-                
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  获取 API Key：访问{' '}
-                  <a 
-                    href="https://open.bigmodel.cn/usercenter/apikeys" 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    智谱 AI 官网
-                  </a>
-                </p>
-              </div>
-
-              {/* AI 生成配置 */}
-              {settings.ai.enabled && (
-                <div className="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  {/* 风格 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        诗词风格
-                      </label>
-                    <select
-                      value={settings.ai.generation.style}
-                      onChange={(e) => {
-                        setSettings({
-                          ...settings,
-                          ai: {
-                            ...settings.ai,
-                            generation: {
-                              ...settings.ai.generation,
-                              style: e.target.value,
-                            },
-                          },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    >
-                      {AI_STYLES.map((style) => (
-                        <option key={style} value={style}>{style}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 季节 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        季节（可选）
-                      </label>
-                    <select
-                      value={settings.ai.generation.season}
-                      onChange={(e) => {
-                        setSettings({
-                          ...settings,
-                          ai: {
-                            ...settings.ai,
-                            generation: {
-                              ...settings.ai.generation,
-                              season: e.target.value,
-                            },
-                          },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="不限">不限</option>
-                      {SEASONS.map((season) => (
-                        <option key={season} value={season}>{season}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 主题 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        主题（可选）
-                      </label>
-                    <select
-                      value={settings.ai.generation.theme}
-                      onChange={(e) => {
-                        setSettings({
-                          ...settings,
-                          ai: {
-                            ...settings.ai,
-                            generation: {
-                              ...settings.ai.generation,
-                              theme: e.target.value,
-                            },
-                          },
-                        });
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    >
-                      <option value="不限">不限</option>
-                      {THEMES.map((theme) => (
-                        <option key={theme} value={theme}>{theme}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 长度 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        诗词长度
-                      </label>
-                    <div className="flex gap-2">
-                      {AI_LENGTHS.map((length) => (
-                        <button
-                          key={length.value}
-                          onClick={() => {
-                            setSettings({
-                              ...settings,
-                              ai: {
-                                ...settings.ai,
-                                generation: {
-                                  ...settings.ai.generation,
-                                  length: length.value,
-                                },
-                              },
-                            });
-                          }}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm transition-colors ${
-                            settings.ai.generation.length === length.value
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                          }`}
-                        >
-                          {length.label}
-                        </button>
-                      ))}
                     </div>
-                  </div>
-
-                  {/* 提示信息 */}
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      💡 <strong>提示：</strong>AI 生成的诗词将保存到本地，每次生成的诗词都不同。
-                      你可以随时切换回本地诗词库（733首精选诗词）。
-                    </p>
-                  </div>
-                </div>
-              )}
+                 </section>
+               )}
             </div>
           )}
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex gap-2">
-            <button
-              onClick={handleReset}
-              className="px-4 py-2 text-sm text-red-600 hover:text-red-700 transition-colors"
-            >
-              重置
-            </button>
-            <button
-              onClick={handleExport}
-              className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              导出
-            </button>
-            <label className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 cursor-pointer transition-colors">
-              导入
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
+        <div className="flex items-center justify-between px-8 py-6 border-t border-muted/10 bg-white/40 backdrop-blur-sm">
+          <div className="flex gap-4">
+            <button onClick={handleReset} className="text-sm text-muted hover:text-red-600 transition-colors">重置</button>
+            <button onClick={handleExport} className="text-sm text-muted hover:text-ink transition-colors">导出配置</button>
+            <label className="text-sm text-muted hover:text-ink transition-colors cursor-pointer">
+               导入配置
+               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
           </div>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            className="px-8 py-2.5 bg-ink text-paper rounded-lg hover:bg-ink/90 hover:scale-105 transition-all shadow-lg font-medium tracking-wide"
           >
-            保存设置
+            保存生效
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>,
+    document.body
   )
 }

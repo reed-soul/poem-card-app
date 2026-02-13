@@ -105,7 +105,7 @@ export function recommendBySolarTerm(
   // 先尝试匹配诗词标签与节气关键词
   const matchedPoems = poems.filter(poem => {
     if (!poem.tags) return false
-    return poem.tags.some(tag => 
+    return poem.tags.some((tag: string) => 
       solarTerm.keywords.includes(tag)
     )
   })
