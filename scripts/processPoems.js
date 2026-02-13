@@ -268,7 +268,7 @@ async function main() {
   console.log(`去重后总计: ${uniquePoems.length}首`);
   
   // 保存数据
-  const outputFile = path.join(__dirname, '../src/data/poems精选.json');
+  const outputFile = path.join(__dirname, '../src/renderer/data/poems精选.json');
   fs.writeFileSync(outputFile, JSON.stringify(uniquePoems, null, 2), 'utf-8');
   
   console.log(`数据已保存到: ${outputFile}`);
