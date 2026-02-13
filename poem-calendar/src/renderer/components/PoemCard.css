@@ -1,0 +1,52 @@
+.poem-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.poem-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.poem-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.poem-meta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.dynasty {
+  background: #d4af37;
+  color: #1a1a1a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.author {
+  font-weight: 400;
+}
+
+.poem-content {
+  text-align: center;
+  line-height: 2;
+}
+
+.poem-line {
+  font-size: 18px;
+  color: #2d2d2d;
+  margin-bottom: 8px;
+}
