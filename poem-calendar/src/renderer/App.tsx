@@ -1,37 +1,250 @@
-import React from 'react'
-import './App.css'
+import React, { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
 import PoemCard from './components/PoemCard'
+import SettingsPanel from './components/SettingsPanel'
 import WindowControls from './components/WindowControls'
+import poems from './data/poems精选.json'
+import { getNearestSolarTerm, recommendBySolarTerm } from './utils/solarTerm'
+import { generatePoem, type GeneratedPoem, isApiKeyConfigured } from './services/zhipuAI'
+import { loadSettings, UserSettings } from './types/settings'
+
+// 类型声明
+declare global {
+  interface Window {
+    electronAPI?: {
+      minimizeWindow: () => void
+      closeWindow: () => void
+      maximizeWindow: () => void
+    }
+  }
+}
 
 function App() {
-  const today = new Date()
+  const [currentPoem, setCurrentPoem] = useState(poems[0])
+  const [today, setToday] = useState('')
+  const [solarTerm, setSolarTerm] = useState<string | null>(null)
+  const [backgroundImage, setBackgroundImage] = useState<string>('')
+  const [showSettings, setShowSettings] = useState(false)
+  const [settings, setSettings] = useState<UserSettings>(() => loadSettings())
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // 示例诗词数据（后续从数据库加载）
-  const samplePoem = {
-    title: '静夜思',
-    author: '李白',
-    dynasty: '唐',
-    content: [
-      '床前明月光，',
-      '疑是地上霜。',
-      '举头望明月，',
-      '低头思故乡。',
-    ],
+  useEffect(() => {
+    // 加载用户设置
+    const loadedSettings = loadSettings()
+    setSettings(loadedSettings)
+    
+    // 设置今天的日期
+    const now = new Date()
+    setToday(format(now, 'yyyy年MM月dd日', { locale: zhCN }))
+    
+    // 获取节气
+    const term = getNearestSolarTerm(now)
+    setSolarTerm(term ? term.name : null)
+    
+    // 推荐或生成诗词
+    recommendOrGeneratePoem(now, term)
+    
+    // 设置背景图片（根据季节变化）
+    const month = now.getMonth() + 1
+    let seasonImage = ''
+    
+    if (month >= 3 && month <= 5) {
+      // 春天：樱花或桃花
+      seasonImage = 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80'
+    } else if (month >= 6 && month <= 8) {
+      // 夏天：荷花
+      seasonImage = 'https://images.unsplash.com/photo-1587327187394-9d9ab0128715?w=1920&q=80'
+    } else if (month >= 9 && month <= 11) {
+      // 秋天：菊花或枫叶
+      seasonImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80'
+    } else {
+      // 冬天：梅花或雪景
+      seasonImage = 'https://images.unsplash.com/photo-1518182170546-0766ba6f6a8e?w=1920&q=80'
+    }
+    
+    setBackgroundImage(seasonImage)
+  }, [])
+
+  // 切换到下一首诗词（用于多首诗词显示）
+  const [currentPoemIndex, setCurrentPoemIndex] = useState(0)
+
+  const nextPoem = async () => {
+    const newIndex = (currentPoemIndex + 1) % Math.min(settings.display.poemsPerDay, poems.length)
+    setCurrentPoemIndex(newIndex)
+    
+    const now = new Date()
+    const term = getNearestSolarTerm(now)
+    await recommendOrGeneratePoem(now, term, newIndex)
   }
 
-  const formattedDate = today.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  /**
+   * 推荐或生成诗词
+   */
+  const recommendOrGeneratePoem = async (date: Date, term: any, indexOffset: number = 0) => {
+    const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)) + indexOffset
+    
+    try {
+      // 如果启用了 AI 且配置了 API Key，则使用 AI 生成
+      if (settings.ai.enabled && settings.ai.apiKey) {
+        setIsGenerating(true)
+        setError(null)
+        
+        try {
+          const aiPoem = await generatePoem({
+            style: settings.ai.generation.style,
+            season: settings.ai.generation.season,
+            theme: settings.ai.generation.theme,
+            length: settings.ai.generation.length,
+          })
+          
+          // 为 AI 生成的诗词添加标签
+          const taggedPoem = {
+            ...aiPoem,
+            tags: [
+              settings.ai.generation.style,
+              settings.ai.generation.season !== '不限' ? settings.ai.generation.season : '',
+              settings.ai.generation.theme !== '不限' ? settings.ai.generation.theme : '',
+              'AI生成',
+            ].filter(Boolean),
+          }
+          
+          setCurrentPoem(taggedPoem)
+        } catch (aiError: any) {
+          console.error('AI generation failed:', aiError)
+          setError(`AI 生成失败：${aiError.message}，使用本地诗词库`)
+          
+          // AI 失败时，回退到本地诗词库
+          const localPoem = getLocalPoem(date, term, dayOfYear)
+          setCurrentPoem(localPoem)
+        } finally {
+          setIsGenerating(false)
+        }
+      } else {
+        // 使用本地诗词库
+        const localPoem = getLocalPoem(date, term, dayOfYear)
+        setCurrentPoem(localPoem)
+      }
+    } catch (error: any) {
+      console.error('Failed to get poem:', error)
+      // 发生任何错误，使用本地诗词库
+      const localPoem = getLocalPoem(date, term, dayOfYear)
+      setCurrentPoem(localPoem)
+    }
+  }
+
+  /**
+   * 从本地诗词库获取诗词
+   */
+  const getLocalPoem = (date: Date, term: any, dayOfYear: number) => {
+    // 根据用户偏好筛选诗词
+    let filteredPoems = [...poems]
+    
+    // 按季节筛选
+    if (settings.preferences.favoriteSeasons.length > 0) {
+      filteredPoems = filteredPoems.filter(poem => {
+        if (!poem.tags) return false
+        return poem.tags.some(tag => settings.preferences.favoriteSeasons.includes(tag))
+      })
+    }
+    
+    // 按主题筛选
+    if (settings.preferences.favoriteThemes.length > 0) {
+      filteredPoems = filteredPoems.filter(poem => {
+        if (!poem.tags) return false
+        return poem.tags.some(tag => settings.preferences.favoriteThemes.includes(tag))
+      })
+    }
+    
+    // 按诗人筛选
+    if (settings.preferences.favoriteAuthors.length > 0) {
+      filteredPoems = filteredPoems.filter(poem => 
+        settings.preferences.favoriteAuthors.includes(poem.author)
+      )
+    }
+    
+    // 如果筛选后没有诗词，使用全部诗词
+    if (filteredPoems.length === 0) {
+      filteredPoems = poems
+    }
+    
+    // 使用节气推荐逻辑
+    return recommendBySolarTerm(filteredPoems, term, dayOfYear)
+  }
 
   return (
-    <div className="app">
-      <WindowControls />
-      <div className="poem-container">
-        <div className="date-badge">{formattedDate}</div>
-        <PoemCard poem={samplePoem} />
+    <div className="relative w-full h-full overflow-hidden">
+      {/* 背景图片 */}
+      <div
+        className="absolute inset-0 bg-cover bg-center transition-all duration-500"
+        style={{ 
+          backgroundImage: `url(${backgroundImage})`,
+          filter: `blur(${settings.background.blur}px)`,
+        }}
+      >
+        <div 
+          className="absolute inset-0 transition-all duration-500"
+          style={{ 
+            backgroundColor: `rgba(0, 0, 0, ${settings.background.opacity / 100})`,
+            backdropFilter: 'blur(10px)'
+          }}
+        ></div>
       </div>
+      
+      {/* 窗口控制 */}
+      <WindowControls />
+      
+      {/* 设置按钮 */}
+      <button
+        onClick={() => setShowSettings(true)}
+        className="absolute top-4 left-4 z-20 p-2 bg-white/10 dark:bg-black/10 backdrop-blur-md rounded-lg hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
+        title="设置"
+      >
+        <svg className="w-6 h-6 text-white group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37-2.37a1.724 1.724 0 001.065-2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 001.066 2.573c-.426 1.756-2.924 1.756 3.35 0a1.724 1.724 0 002.572 1.065c-.426 1.756-2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c1.756.426 2.924 1.756 3.35zM12 18a.75.75 0 01.75-.75V7a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v10.5c0 .414.336.75.75.75a.75.75 0 01.75-.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75z" />
+        </svg>
+      </button>
+
+      {/* 加载状态 */}
+      {isGenerating && (
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
+          <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-2xl p-8 text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-700 dark:text-gray-300">AI 正在生成诗词...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">这需要几秒钟时间</p>
+          </div>
+        </div>
+      )}
+
+      {/* 错误提示 */}
+      {error && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            className="ml-4 text-white hover:text-red-100"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 诗词卡片 */}
+      <PoemCard 
+        poem={currentPoem} 
+        date={today} 
+        weather={solarTerm}
+        showSolarTerm={settings.display.showSolarTerm}
+        showDynasty={settings.display.showDynasty}
+        showAuthor={settings.display.showAuthor}
+      />
+      
+      {/* 设置面板 */}
+      <SettingsPanel 
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </div>
   )
 }

@@ -7,7 +7,13 @@ import {
   resetSettings,
   exportSettings 
 } from '../types/settings'
-import { isApiKeyConfigured as isZhipuApiKeyConfigured } from '../services/zhipuAI'
+import { 
+  generatePoem, 
+  testApiKey, 
+  saveApiKey, 
+  isApiKeyConfigured,
+  getApiConfig 
+} from '../services/zhipuAI'
 
 interface SettingsPanelProps {
   isOpen: boolean
@@ -16,7 +22,7 @@ interface SettingsPanelProps {
 
 // 常见诗人列表
 const POPULAR_AUTHORS = [
-  '李白', '杜甫', '王维', '白居易', '苏轼', 
+  '李白', '杜甫', "王维", '白居易', '苏轼', 
   '李清照', '辛弃疾', '柳永', '杜牧', '李煜',
   '陆游', '王安石', '杨万里', '文天祥', '欧阳修'
 ]
@@ -39,9 +45,11 @@ const AI_LENGTHS = [
   { value: 8, label: '八句律诗' },
 ]
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
+export default function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS)
   const [activeTab, setActiveTab] = useState<'preferences' | 'display' | 'background' | 'ai'>('preferences')
+  const [isTestingApiKey, setIsTestingApiKey] = useState(false)
+  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // 加载设置
   useEffect(() => {
@@ -53,7 +61,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   const handleSave = () => {
     saveSettings(settings)
     onClose()
-    window.location.reload() // 重新加载以应用设置
+    window.location.reload()
   }
 
   // 重置设置
@@ -61,6 +69,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     if (confirm('确定要重置所有设置吗？')) {
       resetSettings()
       setSettings(DEFAULT_SETTINGS)
+      setApiKeyTestResult(null)
     }
   }
 
@@ -77,11 +86,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
       reader.onload = async (e) => {
         try {
           const imported = JSON.parse(e.target?.result as string)
+          
+          // 保存 API Key
+          if (imported.ai?.apiKey) {
+            saveApiKey(imported.ai.apiKey)
+          }
+          
           setSettings({
-            ...DEFAULT_SETTINGS,
-            ...imported,
-          })
-          saveSettings({
             ...DEFAULT_SETTINGS,
             ...imported,
           })
@@ -96,25 +107,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
   // 测试智谱 API Key
   const handleTestApiKey = async () => {
     if (!settings.ai.apiKey) {
-      alert('请先输入 API Key')
+      setApiKeyTestResult({
+        success: false,
+        message: '请先输入 API Key'
+      })
       return
     }
 
+    setIsTestingApiKey(true)
+    setApiKeyTestResult(null)
+
     try {
-      const { generatePoem } = await import('../services/zhipuAI')
-      const poem = await generatePoem({
-        style: settings.ai.generation.style,
-        season: settings.ai.generation.season,
-        theme: settings.ai.generation.theme,
-        length: settings.ai.generation.length,
-      })
-      alert(`API Key 测试成功！生成的诗词：\n\n${poem.title}\n\n${poem.content.join('\n')}`)
+      const result = await testApiKey(settings.ai.apiKey)
+      setApiKeyTestResult(result)
+      
+      // 如果测试成功，保存 API Key
+      if (result.success && result.success) {
+        saveApiKey(settings.ai.apiKey)
+      }
     } catch (error: any) {
-      alert(`API Key 测试失败：${error.message}`)
+      setApiKeyTestResult({
+        success: false,
+        message: error.message || '测试失败'
+      })
+    } finally {
+      setIsTestingApiKey(false)
     }
   }
 
   if (!isOpen) return null
+
+  const apiConfig = getApiConfig()
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -304,8 +327,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                     }}
                     className={`flex-1 px-4 py-3 rounded-lg text-sm transition-colors ${
                       settings.ai.enabled
-                          ? 'bg-purple-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
                   >
                     AI 智能生成
@@ -529,6 +552,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   智谱 AI API Key
+                  {apiConfig.isFromEnv && (
+                    <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded">
+                      环境变量配置（不可编辑）
+                    </span>
+                  )}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -544,15 +572,48 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         },
                       });
                     }}
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    disabled={apiConfig.isFromEnv}
+                    className={`flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 ${
+                      apiConfig.isFromEnv ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-60' : ''
+                    }`}
                   />
                   <button
                     onClick={handleTestApiKey}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium text-sm"
+                    disabled={isTestingApiKey || !settings.ai.apiKey}
+                    className={`px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium text-sm ${
+                      isTestingApiKey ? 'opacity-50 cursor-wait' : ''
+                    }`}
                   >
-                    测试
+                    {isTestingApiKey ? '测试中...' : '测试'}
                   </button>
                 </div>
+                
+                {/* API Key 测试结果 */}
+                {apiKeyTestResult && (
+                  <div className={`mt-2 p-3 rounded-lg text-sm ${
+                    apiKeyTestResult.success
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 border border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800'
+                  }`}>
+                    {apiKeyTestResult.success ? '✅ ' : '❌ '}
+                    {apiKeyTestResult.message}
+                    {apiKeyTestResult.samplePoem && (
+                      <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600 text-xs">
+                        <div className="font-medium">生成的示例：</div>
+                        <div className="mt-1 text-gray-700 dark:text-gray-300">
+                          <div className="font-bold">{apiKeyTestResult.samplePoem.title}</div>
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {apiKeyTestResult.samplePoem.dynasty} · {apiKeyTestResult.samplePoem.author}
+                          </div>
+                          <div className="mt-1">
+                            {apiKeyTestResult.samplePoem.content.join('，')}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                   获取 API Key：访问{' '}
                   <a 
@@ -563,30 +624,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                   >
                     智谱 AI 官网
                   </a>
-                </p>
-              </div>
-
-              {/* 模拟模式 */}
-              <div>
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={settings.ai.useMock}
-                    onChange={(e) => {
-                      setSettings({
-                        ...settings,
-                        ai: {
-                          ...settings.ai,
-                          useMock: e.target.checked,
-                        },
-                      });
-                    }}
-                    className="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">使用模拟模式（测试用）</span>
-                </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  模拟模式会返回预设的诗词，不实际调用 AI API。用于测试功能。
                 </p>
               </div>
 
