@@ -4,14 +4,24 @@ interface PoemCardProps {
   poem: {
     title: string
     author: string
-    dynasty: string
+    dynasty?: string
     content: string[]
   }
   date: string
-  weather?: string
+  weather?: string | null
+  showSolarTerm?: boolean
+  showDynasty?: boolean
+  showAuthor?: boolean
 }
 
-const PoemCard: React.FC<PoemCardProps> = ({ poem, date, weather }) => {
+const PoemCard: React.FC<PoemCardProps> = ({ 
+  poem, 
+  date, 
+  weather,
+  showSolarTerm = true,
+  showDynasty = true,
+  showAuthor = true
+}) => {
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-transparent">
       {/* 主卡片 */}
@@ -30,7 +40,7 @@ const PoemCard: React.FC<PoemCardProps> = ({ poem, date, weather }) => {
           {/* 日期和天气/节气 */}
           <div className="absolute top-10 right-10 text-right">
             <div className="text-muted text-sm tracking-widest mb-1">{date}</div>
-            {weather && (
+            {weather && showSolarTerm && (
               <div className="text-accent/70 text-xs">🌤️ {weather}</div>
             )}
           </div>
@@ -48,9 +58,16 @@ const PoemCard: React.FC<PoemCardProps> = ({ poem, date, weather }) => {
           </h1>
           
           {/* 作者和朝代 */}
-          <div className="text-muted text-base mb-8 tracking-wider">
-            {poem.dynasty} · {poem.author}
-          </div>
+          {(showAuthor || showDynasty) && (
+            <div className="text-muted text-base mb-8 tracking-wider">
+              {showDynasty && poem.dynasty && (
+                <span className="mr-2">{poem.dynasty}</span>
+              )}
+              {showAuthor && (
+                <span className="font-bold text-secondary">{poem.author}</span>
+              )}
+            </div>
+          )}
           
           {/* 诗词内容 */}
           <div className="text-xl text-ink leading-loose tracking-wide font-medium">
