@@ -10,11 +10,21 @@
   ],
   "mac": {
     "category": "public.app-category.lifestyle",
-    "target": ["dmg"],
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "x64",
+          "arm64"
+        ]
+      }
+    ],
     "icon": "build/icon.icns"
   },
   "win": {
-    "target": ["nsis"],
+    "target": [
+      "nsis"
+    ],
     "icon": "build/icon.ico"
   },
   "nsis": {

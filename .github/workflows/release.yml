@@ -1,0 +1,44 @@
+name: Release App
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送带有 v 前缀的 tag（如 v0.1.0）时，自动触发此工作流
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        # 同时使用 Mac 和 Windows 服务器进行构建
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.27.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build and Release
+        env:
+          # GitHub 在运行 Action 时会自动注入这个 Token，拥有发布 Release 的权限
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm exec electron-vite build
+          pnpm exec electron-builder --publish always
