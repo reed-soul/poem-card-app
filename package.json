@@ -1,6 +1,6 @@
 {
   "name": "poem-calendar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "每日一首诗词，与天地对话 - 跨端桌面诗词卡片应用",
   "type": "module",
   "packageManager": "pnpm@10.27.0",
