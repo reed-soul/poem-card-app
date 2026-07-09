@@ -1,166 +1,108 @@
 /**
- * 用户设置类型定义
+ * Phase 1–2 用户设置：克制、少选项。
+ * 真诗来自精校库；AI 只用于赏析增强与创作工坊。
  */
 
-/**
- * AI 设置
- */
-export interface AISettings {
-  enabled: boolean              // 是否启用 AI
-  apiKey: string              // 智谱 AI API Key
-  generation: {
-    style: string              // 风格：豪放、婉约、清新、深沉
-    season: string             // 季节：春、夏、秋、冬
-    theme: string              // 主题：山水、田园、边塞、思乡
-    length: number            // 长度：4句、8句
-  };
-}
+import type { PoemTheme } from './poem'
 
-// 默认 AI 设置
-export const DEFAULT_AI_SETTINGS: AISettings = {
-  enabled: false,
-  apiKey: '',
-  generation: {
-    style: '清新',
-    season: '不限',
-    theme: '不限',
-    length: 4,
-  },
-};
+export type AiAppreciationMode = 'local' | 'auto'
+export type AppThemeId = 'spring' | 'night' | 'plain'
 
-// 用户设置
 export interface UserSettings {
-  // 偏好设置
-  preferences: {
-    favoriteAuthors: string[]      // 喜欢的诗人
-    favoriteSeasons: string[]      // 喜欢的季节
-    favoriteThemes: string[]       // 喜欢的主题
-  };
-
-  // 显示设置
   display: {
-    poemsPerDay: number;           // 每天显示的诗词数量
-    showSolarTerm: boolean;        // 是否显示节气
-    showDynasty: boolean;          // 是否显示朝代
-    showAuthor: boolean;           // 是否显示作者
-  };
-
-  // 背景设置
-  background: {
-    source: 'online' | 'local';    // 背景图片源
-    blur: number;                    // 模糊度 (0-100)
-    opacity: number;                  // 透明度 (0-100)
-  };
-
-  // AI 设置
-  ai: AISettings;
+    showSolarTerm: boolean
+    showDynasty: boolean
+    showAuthor: boolean
+    showReason: boolean
+  }
+  preferences: {
+    favoriteAuthors: string[]
+    favoriteThemes: PoemTheme[]
+  }
+  appearance: {
+    theme: AppThemeId
+  }
+  ai: {
+    /** local=只用预置赏析；auto=有 Key 时尝试增强 */
+    appreciationMode: AiAppreciationMode
+    zhipuApiKey: string
+    deepseekApiKey: string
+  }
 }
 
-// 默认设置
 export const DEFAULT_SETTINGS: UserSettings = {
-  preferences: {
-    favoriteAuthors: [],
-    favoriteSeasons: [],
-    favoriteThemes: [],
-  },
   display: {
-    poemsPerDay: 1,
     showSolarTerm: true,
     showDynasty: true,
     showAuthor: true,
+    showReason: true,
   },
-  background: {
-    source: 'online',
-    blur: 30,
-    opacity: 30,
+  preferences: {
+    favoriteAuthors: [],
+    favoriteThemes: [],
   },
-  ai: DEFAULT_AI_SETTINGS,
-};
+  appearance: {
+    theme: 'spring',
+  },
+  ai: {
+    appreciationMode: 'local',
+    zhipuApiKey: '',
+    deepseekApiKey: '',
+  },
+}
 
-// 存储键
-export const SETTINGS_STORAGE_KEY = 'poem-card-settings';
+export const THEME_OPTIONS: Array<{ id: AppThemeId; label: string; hint: string }> = [
+  { id: 'spring', label: '春纸', hint: '暖纸金墨' },
+  { id: 'night', label: '夜墨', hint: '深底朱印' },
+  { id: 'plain', label: '素屏', hint: '素白静墨' },
+]
 
-/**
- * 从 localStorage 加载设置
- */
+const SETTINGS_KEY = 'poem-card-settings-v2'
+
+export function applyThemeToDocument(theme: AppThemeId): void {
+  if (typeof document === 'undefined') return
+  document.documentElement.dataset.theme = theme
+}
+
 export function loadSettings(): UserSettings {
   try {
-    const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return {
-        ...DEFAULT_SETTINGS,
-        ...parsed,
-        preferences: { ...DEFAULT_SETTINGS.preferences, ...(parsed.preferences || {}) },
-        display: { ...DEFAULT_SETTINGS.display, ...(parsed.display || {}) },
-        background: { ...DEFAULT_SETTINGS.background, ...(parsed.background || {}) },
-        ai: { 
-          ...DEFAULT_SETTINGS.ai, 
-          ...(parsed.ai || {}),
-          generation: { 
-            ...DEFAULT_SETTINGS.ai.generation, 
-            ...(parsed.ai?.generation || {}) 
-          } 
-        },
-      };
+    const stored = localStorage.getItem(SETTINGS_KEY)
+    if (!stored) {
+      applyThemeToDocument(DEFAULT_SETTINGS.appearance.theme)
+      return { ...DEFAULT_SETTINGS }
     }
-  } catch (error) {
-    console.error('Failed to load settings:', error);
+    const parsed = JSON.parse(stored)
+    const settings: UserSettings = {
+      display: { ...DEFAULT_SETTINGS.display, ...(parsed.display || {}) },
+      preferences: {
+        ...DEFAULT_SETTINGS.preferences,
+        ...(parsed.preferences || {}),
+      },
+      appearance: {
+        ...DEFAULT_SETTINGS.appearance,
+        ...(parsed.appearance || {}),
+        theme: (['spring', 'night', 'plain'] as AppThemeId[]).includes(
+          parsed.appearance?.theme,
+        )
+          ? parsed.appearance.theme
+          : DEFAULT_SETTINGS.appearance.theme,
+      },
+      ai: { ...DEFAULT_SETTINGS.ai, ...(parsed.ai || {}) },
+    }
+    applyThemeToDocument(settings.appearance.theme)
+    return settings
+  } catch {
+    applyThemeToDocument(DEFAULT_SETTINGS.appearance.theme)
+    return { ...DEFAULT_SETTINGS }
   }
-  return DEFAULT_SETTINGS;
 }
 
-/**
- * 保存设置到 localStorage
- */
 export function saveSettings(settings: UserSettings): void {
-  try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-  } catch (error) {
-    console.error('Failed to save settings:', error);
-  }
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  applyThemeToDocument(settings.appearance.theme)
 }
 
-/**
- * 重置设置为默认值
- */
 export function resetSettings(): UserSettings {
-  saveSettings(DEFAULT_SETTINGS);
-  return DEFAULT_SETTINGS;
-}
-
-/**
- * 导出设置到文件
- */
-export function exportSettings(settings: UserSettings): void {
-  const data = JSON.stringify(settings, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'poem-card-settings.json';
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-/**
- * 从文件导入设置
- */
-export async function importSettings(file: File): Promise<UserSettings> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const settings = JSON.parse(event.target?.result as string);
-        resolve({
-          ...DEFAULT_SETTINGS,
-          ...settings,
-        });
-      } catch (error) {
-        reject(new Error('Invalid settings file'));
-      }
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
+  saveSettings(DEFAULT_SETTINGS)
+  return { ...DEFAULT_SETTINGS }
 }

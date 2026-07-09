@@ -8,7 +8,17 @@ let savedBounds: { width: number; height: number; x: number; y: number } | null 
 // API Key 安全存储路径
 const getApiKeyPath = () => path.join(app.getPath('userData'), '.api_key')
 
+function resolveWindowIcon(): string | undefined {
+  const candidates = [
+    path.join(process.resourcesPath, 'icon.png'),
+    path.join(__dirname, '../../build/icon.png'),
+    path.join(app.getAppPath(), 'build/icon.png'),
+  ]
+  return candidates.find((p) => fs.existsSync(p))
+}
+
 function createWindow() {
+  const icon = resolveWindowIcon()
   mainWindow = new BrowserWindow({
     width: 400,
     height: 600,
@@ -16,6 +26,8 @@ function createWindow() {
     minHeight: 500,
     frame: false,
     transparent: true,
+    title: '诗词日历',
+    ...(icon ? { icon } : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
@@ -23,6 +35,8 @@ function createWindow() {
     },
     backgroundColor: '#00000000',
   })
+
+  mainWindow.setTitle('诗词日历')
 
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)

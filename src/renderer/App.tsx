@@ -1,15 +1,33 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import PoemCard from './components/PoemCard'
+import PoemCard, { type PoemCardMode } from './components/PoemCard'
 import SettingsPanel from './components/SettingsPanel'
+import HistoryCalendar from './components/HistoryCalendar'
+import FavoritesPanel from './components/FavoritesPanel'
+import WorkshopPanel from './components/WorkshopPanel'
 import WindowControls from './components/WindowControls'
-import poems from './data/poems精选.json'
-import { getNearestSolarTerm, recommendBySolarTerm } from './utils/solarTerm'
-import { generatePoem, loadApiKeyFromSecureStorage } from './services/zhipuAI'
-import { loadSettings, UserSettings } from './types/settings'
+import { curatedPoems } from './content/poems'
+import { isFavorite, toggleFavorite } from './content/favorites'
+import { isSameDay, markDateViewed, startOfDay } from './content/history'
+import { pickDailyPoem } from './engine/dailyPick'
+import {
+  getAppreciation,
+  getLocalAppreciation,
+  saveProviderApiKey,
+} from './services/ai/appreciation'
+import {
+  copyPoemText,
+  downloadShareImage,
+  readThemeColorsFromDom,
+} from './services/shareImage'
+import {
+  applyThemeToDocument,
+  loadSettings,
+  type UserSettings,
+} from './types/settings'
+import type { CuratedPoem, DailyPickResult } from './types/poem'
 
-// 类型声明
 declare global {
   interface Window {
     electronAPI?: {
@@ -25,219 +43,226 @@ declare global {
   }
 }
 
+function buildSolarTermLabel(pick: DailyPickResult): string {
+  if (!pick.solarTerm) return ''
+  const { name, isToday, daysUntil } = pick.solarTerm
+  if (isToday) return `今日${name}`
+  if (daysUntil > 0) return `${name}将至`
+  return `近${name}`
+}
+
 function App() {
-  const [currentPoem, setCurrentPoem] = useState(poems[0])
-  const [today, setToday] = useState('')
-  const [solarTerm, setSolarTerm] = useState<string | null>(null)
-  const [backgroundImage, setBackgroundImage] = useState<string>('')
-  const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<UserSettings>(() => loadSettings())
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [viewDate, setViewDate] = useState<Date>(() => startOfDay())
+  const [pick, setPick] = useState<DailyPickResult | null>(null)
+  const [overridePoem, setOverridePoem] = useState<CuratedPoem | null>(null)
+  const [dateLabel, setDateLabel] = useState('')
+  const [appreciation, setAppreciation] = useState<string | null>(null)
+  const [favorited, setFavorited] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [showWorkshop, setShowWorkshop] = useState(false)
+
+  const cardMode: PoemCardMode = overridePoem
+    ? 'favorite'
+    : isSameDay(viewDate, startOfDay())
+      ? 'daily'
+      : 'history'
+
+  const displayedPoem = overridePoem ?? pick?.poem ?? null
+
+  const loadPoemForDate = (date: Date, nextSettings: UserSettings) => {
+    const day = startOfDay(date)
+    setViewDate(day)
+    setOverridePoem(null)
+    setDateLabel(format(day, 'yyyy年MM月dd日', { locale: zhCN }))
+    markDateViewed(day)
+
+    const result = pickDailyPoem(curatedPoems, {
+      date: day,
+      preferredAuthors: nextSettings.preferences.favoriteAuthors,
+      preferredThemes: nextSettings.preferences.favoriteThemes,
+    })
+    setPick(result)
+    setFavorited(isFavorite(result.poem.id))
+
+    const local = getLocalAppreciation(result.poem)
+    setAppreciation(local.text)
+
+    if (nextSettings.ai.appreciationMode === 'auto') {
+      if (nextSettings.ai.zhipuApiKey) {
+        saveProviderApiKey('zhipu', nextSettings.ai.zhipuApiKey)
+      }
+      if (nextSettings.ai.deepseekApiKey) {
+        saveProviderApiKey('deepseek', nextSettings.ai.deepseekApiKey)
+      }
+      void getAppreciation({
+        poem: result.poem,
+        reason: result.reason,
+      }).then((enhanced) => {
+        setAppreciation(enhanced.text)
+      })
+    }
+  }
 
   useEffect(() => {
-    // 加载用户设置
-    const loadedSettings = loadSettings()
-    setSettings(loadedSettings)
-    
-    // 加载安全存储的 API Key
-    loadApiKeyFromSecureStorage()
-    
-    // 设置今天的日期
-    const now = new Date()
-    setToday(format(now, 'yyyy年MM月dd日', { locale: zhCN }))
-    
-    // 获取节气
-    const term = getNearestSolarTerm(now)
-    setSolarTerm(term ? term.name : null)
-    
-    // 推荐或生成诗词
-    recommendOrGeneratePoem(now, term)
-    
-    // 设置背景图片（根据季节变化）
-    const month = now.getMonth() + 1
-    let seasonImage = ''
-    
-    if (month >= 3 && month <= 5) {
-      // 春天：樱花或桃花
-      seasonImage = 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&q=80'
-    } else if (month >= 6 && month <= 8) {
-      // 夏天：荷花
-      seasonImage = 'https://images.unsplash.com/photo-1587327187394-9d9ab0128715?w=1920&q=80'
-    } else if (month >= 9 && month <= 11) {
-      // 秋天：菊花或枫叶
-      seasonImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80'
-    } else {
-      // 冬天：梅花或雪景
-      seasonImage = 'https://images.unsplash.com/photo-1518182170546-0766ba6f6a8e?w=1920&q=80'
-    }
-    
-    setBackgroundImage(seasonImage)
+    applyThemeToDocument(settings.appearance.theme)
+    loadPoemForDate(startOfDay(), settings)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 切换到下一首诗词（用于多首诗词显示）
-  // 切换到下一首诗词（用于多首诗词显示）- 预留功能
-  // const [currentPoemIndex] = useState(0)
+  const openOverlay = async (kind: 'settings' | 'calendar' | 'favorites' | 'workshop') => {
+    await window.electronAPI?.enterSettings()
+    setShowSettings(kind === 'settings')
+    setShowCalendar(kind === 'calendar')
+    setShowFavorites(kind === 'favorites')
+    setShowWorkshop(kind === 'workshop')
+  }
 
-  /**
-   * 推荐或生成诗词
-   */
-  const recommendOrGeneratePoem = async (date: Date, term: any, indexOffset: number = 0) => {
-    const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)) + indexOffset
-    
+  const closeOverlay = () => {
+    window.electronAPI?.leaveSettings()
+    setShowSettings(false)
+    setShowCalendar(false)
+    setShowFavorites(false)
+    setShowWorkshop(false)
+  }
+
+  const handleShare = async () => {
+    if (!displayedPoem) return
+    setSharing(true)
     try {
-      // 如果启用了 AI 且配置了 API Key，则使用 AI 生成
-      if (settings.ai.enabled && settings.ai.apiKey) {
-        setIsGenerating(true)
-        setError(null)
-        
-        try {
-          const aiPoem = await generatePoem({
-            style: settings.ai.generation.style,
-            season: settings.ai.generation.season,
-            theme: settings.ai.generation.theme,
-            length: settings.ai.generation.length,
-          })
-          
-          // 为 AI 生成的诗词添加标签
-          const taggedPoem = {
-            ...aiPoem,
-            tags: [
-              settings.ai.generation.style,
-              settings.ai.generation.season !== '不限' ? settings.ai.generation.season : '',
-              settings.ai.generation.theme !== '不限' ? settings.ai.generation.theme : '',
-              'AI生成',
-            ].filter(Boolean),
-          }
-          
-          setCurrentPoem(taggedPoem)
-        } catch (aiError: any) {
-          console.error('AI generation failed:', aiError)
-          setError(`AI 生成失败：${aiError.message}，使用本地诗词库`)
-          
-          // AI 失败时，回退到本地诗词库
-          const localPoem = getLocalPoem(date, term, dayOfYear)
-          setCurrentPoem(localPoem)
-        } finally {
-          setIsGenerating(false)
-        }
-      } else {
-        // 使用本地诗词库
-        const localPoem = getLocalPoem(date, term, dayOfYear)
-        setCurrentPoem(localPoem)
-      }
-    } catch (error: any) {
-      console.error('Failed to get poem:', error)
-      // 发生任何错误，使用本地诗词库
-      const localPoem = getLocalPoem(date, term, dayOfYear)
-      setCurrentPoem(localPoem)
+      await downloadShareImage({
+        poem: displayedPoem,
+        dateLabel,
+        solarTermLabel:
+          cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null,
+        theme: readThemeColorsFromDom(),
+      })
+    } catch (error) {
+      console.error('share failed', error)
+      alert(error instanceof Error ? error.message : '分享导出失败')
+    } finally {
+      setSharing(false)
     }
   }
 
-  /**
-   * 从本地诗词库获取诗词
-   */
-  const getLocalPoem = (_date: Date, term: any, dayOfYear: number) => {
-    // 根据用户偏好筛选诗词
-    let filteredPoems = [...poems]
-    
-    // 按季节筛选
-    if (settings.preferences.favoriteSeasons.length > 0) {
-      filteredPoems = filteredPoems.filter(poem => {
-        if (!poem.tags) return false
-        return poem.tags.some(tag => settings.preferences.favoriteSeasons.includes(tag))
+  const handleCopy = async () => {
+    if (!displayedPoem) return
+    try {
+      await copyPoemText({
+        poem: displayedPoem,
+        dateLabel,
+        solarTermLabel:
+          cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null,
       })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '复制失败')
     }
-    
-    // 按主题筛选
-    if (settings.preferences.favoriteThemes.length > 0) {
-      filteredPoems = filteredPoems.filter(poem => {
-        if (!poem.tags) return false
-        return poem.tags.some(tag => settings.preferences.favoriteThemes.includes(tag))
-      })
-    }
-    
-    // 按诗人筛选
-    if (settings.preferences.favoriteAuthors.length > 0) {
-      filteredPoems = filteredPoems.filter(poem => 
-        settings.preferences.favoriteAuthors.includes(poem.author)
-      )
-    }
-    
-    // 如果筛选后没有诗词，使用全部诗词
-    if (filteredPoems.length === 0) {
-      filteredPoems = poems
-    }
-    
-    // 使用节气推荐逻辑
-    return recommendBySolarTerm(filteredPoems, term, dayOfYear)
   }
+
+  const navBtn =
+    'px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 bg-white/30 backdrop-blur-md text-muted hover:text-ink hover:border-ink/30 transition-colors'
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      {/* 背景图片 */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-500"
-        style={{ 
-          backgroundImage: `url(${backgroundImage})`,
-          filter: `blur(${settings.background.blur}px)`,
-        }}
-      >
-        <div 
-          className="absolute inset-0 transition-all duration-500"
-          style={{ 
-            backgroundColor: `rgba(0, 0, 0, ${settings.background.opacity / 100})`,
-            backdropFilter: 'blur(10px)'
-          }}
-        ></div>
-      </div>
-      
-      {/* 窗口控制 */}
+    <div className="relative w-full h-full overflow-hidden app-shell">
+      <div className="absolute inset-0 opacity-40 pointer-events-none app-shell-glow" />
+
       <WindowControls />
-      
-      {/* 设置按钮 */}
+
       <button
-        onClick={async () => {
-          await window.electronAPI?.enterSettings()
-          setShowSettings(true)
-        }}
-        className="absolute top-4 left-4 z-20 p-2 bg-white/10 dark:bg-black/10 backdrop-blur-md rounded-lg hover:bg-white/20 dark:hover:bg-black/20 transition-all group"
+        type="button"
+        onClick={() => openOverlay('settings')}
+        className="absolute top-4 left-4 z-20 p-2 bg-white/10 backdrop-blur-md rounded-lg hover:bg-white/20 transition-all"
         title="设置"
+        aria-label="打开设置"
       >
-        <svg className="w-6 h-6 text-white group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37-2.37a1.724 1.724 0 001.065-2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31 2.37a1.724 1.724 0 001.066 2.573c-.426 1.756-2.924 1.756 3.35 0a1.724 1.724 0 002.572 1.065c-.426 1.756-2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c1.756.426 2.924 1.756 3.35zM12 18a.75.75 0 01.75-.75V7a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v10.5c0 .414.336.75.75.75a.75.75 0 01.75-.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75v-6a.75.75 0 01-.75-.75A2.25 2.25 0 019.75 4.5a.75.75 0 01-.75.75z" />
+        <svg className="w-6 h-6 text-ink/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </button>
 
-      {/* 错误提示 */}
-      {error && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
-          {error}
-          <button 
-            onClick={() => setError(null)}
-            className="ml-4 text-white hover:text-red-100"
-          >
-            ✕
-          </button>
-        </div>
+      {displayedPoem && (
+        <PoemCard
+          poem={displayedPoem}
+          dateLabel={dateLabel}
+          solarTermLabel={
+            cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null
+          }
+          reason={cardMode === 'favorite' ? null : pick?.reason}
+          appreciation={appreciation}
+          mode={cardMode}
+          showSolarTerm={settings.display.showSolarTerm}
+          showDynasty={settings.display.showDynasty}
+          showAuthor={settings.display.showAuthor}
+          showReason={settings.display.showReason}
+          favorited={favorited}
+          sharing={sharing}
+          onToggleFavorite={() => {
+            const next = toggleFavorite(displayedPoem.id)
+            setFavorited(next.includes(displayedPoem.id))
+          }}
+          onShare={handleShare}
+          onCopy={handleCopy}
+        />
       )}
 
-      {/* 诗词卡片 */}
-      <PoemCard 
-        poem={currentPoem} 
-        date={today} 
-        weather={solarTerm}
-        showSolarTerm={settings.display.showSolarTerm}
-        showDynasty={settings.display.showDynasty}
-        showAuthor={settings.display.showAuthor}
-        loading={isGenerating}
-      />
-      
-      {/* 设置面板 */}
-      <SettingsPanel 
+      <nav
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+        aria-label="次级入口"
+      >
+        <button type="button" className={navBtn} onClick={() => openOverlay('calendar')}>
+          日历
+        </button>
+        <button type="button" className={navBtn} onClick={() => openOverlay('favorites')}>
+          收藏
+        </button>
+        <button
+          type="button"
+          className={`${navBtn} text-muted/70`}
+          onClick={() => openOverlay('workshop')}
+        >
+          创作
+        </button>
+      </nav>
+
+      <SettingsPanel
         isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={closeOverlay}
+        onSaved={(next) => {
+          setSettings(next)
+          loadPoemForDate(viewDate, next)
+        }}
       />
+
+      <HistoryCalendar
+        isOpen={showCalendar}
+        selectedDate={viewDate}
+        onClose={closeOverlay}
+        onSelectDate={(date) => loadPoemForDate(date, settings)}
+        onBackToToday={() => loadPoemForDate(startOfDay(), settings)}
+      />
+
+      <FavoritesPanel
+        isOpen={showFavorites}
+        onClose={closeOverlay}
+        onSelectPoem={(poem) => {
+          setOverridePoem(poem)
+          setDateLabel('收藏')
+          setFavorited(isFavorite(poem.id))
+          const local = getLocalAppreciation(poem)
+          setAppreciation(local.text)
+        }}
+      />
+
+      <WorkshopPanel isOpen={showWorkshop} onClose={closeOverlay} />
     </div>
   )
 }

@@ -16,16 +16,19 @@
 
 ## 项目概述
 
-**诗词日历** 是一款跨端桌面应用，每天为用户推荐一首古诗词，结合 24 节气和用户偏好，提供沉浸式的诗词阅读体验。
+**诗词日历** 是一款跨端桌面应用：**每日一诗 · 精校 · 节气**。打开即读，安静、准确、好看。
 
 ### 核心功能
 
-- ✅ 733首精选古诗词（唐诗、宋词、宋诗、五代词）
-- ✅ 智谱 AI 智能生成古诗词（可配置风格、季节、主题）
-- ✅ 24 节气算法与推荐
-- ✅ 完全自定义的用户设置
-- ✅ 中国风精美 UI 设计
+- ✅ 约 180 首人工精校古诗词（真诗库，非粗筛堆量）
+- ✅ 24 节气计算 + 可解释的每日选定引擎
+- ✅ 历史日历回顾（同日同诗）+ Canvas 分享长图
+- ✅ 收藏集、春纸 / 夜墨 / 素屏三套离线主题
+- ✅ 本地预置短赏析；可选智谱 / DeepSeek **只做讲解增强**
+- ✅ 创作工坊（明确 AI 新作，隔离每日真诗）
 - ✅ 跨端支持（macOS、Windows）
+
+> 原则：**真诗只来自精校库；AI 绝不冒充古人写诗。** 详见 `docs/PHASE1.md`、`docs/PHASE2.md`。
 
 ---
 
@@ -44,56 +47,23 @@
 - 👤️ 用户偏好：喜欢的诗人、季节、主题
 - 🎲 随机性：基于日期种子的伪随机
 
-### 2. AI 生成
+### 2. 赏析（可选 AI 增强）
 
-**智谱 AI 集成：**
-- 🎯 模型：GLM-4
-- 🔧 可配置参数：
-  - 风格：清新、豪放、婉约、深沉、灵动
-  - 季节：春、夏、秋、冬（可选）
-  - 主题：山水、田园、边塞、思乡等（可选）
-  - 长度：四句绝句、八句律诗
-- 🏷️ 自动打标签：风格、季节、主题、AI生成
+- 默认使用精校库预置短赏析
+- 设置中开启「自动增强」后：智谱优先，DeepSeek 回退
+- **只讲解原作**，不生成伪唐诗/伪宋词
 
-**智能回退：**
-```
-AI 生成
-    ↓ (失败)
-本地诗词库 (733首)
-```
+### 3. 用户设置（克制）
 
-### 3. 用户设置
-
-**偏好设置：**
-- 喜欢的诗人（15位名家可选）
-- 喜欢的季节（春夏秋冬）
-- 喜欢的主题（10种主题可选）
-
-**显示设置：**
-- 每天显示的诗词数量（1-10首）
-- 显示/隐藏节气信息
-- 显示/隐藏朝代
-- 显示/隐藏作者
-- 诗词来源切换（本地 vs AI）
-
-**背景设置：**
-- 图片来源（在线/本地）
-- 背景模糊度（0-100%）
-- 背景透明度（0-100%）
-
-**数据管理：**
-- 导出设置（JSON 文件）
-- 导入设置（从 JSON 文件）
-- 重置为默认值
+- 显示：节气 / 朝代 / 作者 / 今日缘由
+- 口味：偏爱诗人、主题（只加权，不硬过滤）
+- 赏析：仅本地 / 自动增强（可填智谱、DeepSeek Key）
 
 ### 4. 中国风 UI
 
-**设计元素：**
-- 🎨 毛玻璃效果（backdrop-blur）
-- 🔴 中国红装饰角
-- 🖋️ 印章样式组件
-- 📜 诗词卡片布局
-- 🌸 季节背景图片（自动切换）
+- 纸感卡片、朱红印章、克制动效
+- 三套离线主题：春纸 / 夜墨 / 素屏（纯 CSS，无外链背景图）
+- Canvas 分享长图 + 一键复制诗文
 
 ---
 
@@ -162,227 +132,110 @@ poem-calendar/
 
 ## 安装指南
 
-### 开发环境要求
+### 环境要求
 
-- **Node.js**: >= 18.0.0
-- **npm**: >= 9.0.0
-- **git**: >= 2.0.0
+- Node.js >= 18
+- **pnpm**（仓库强制，勿用 npm/yarn）
 
-### 安装步骤
+### 步骤
 
-1. **克隆仓库**
-   ```bash
-   git clone https://github.com/reed-soul/poem-card-app.git
-   cd poem-card-app/poem-calendar
-   ```
+```bash
+git clone https://github.com/reed-soul/poem-card-app.git
+cd poem-card-app
+pnpm install
+pnpm icons          # 生成 build/ 应用图标
+pnpm dev
+```
 
-2. **安装依赖**
-   ```bash
-   npm install
-   ```
+应用由 Electron 打开；开发态渲染地址由 electron-vite 注入。
 
-3. **启动开发服务器**
-   ```bash
-   npm run dev
-   ```
-
-4. **打开应用**
-   - 应用会自动打开
-   - 访问 http://localhost:5173
+可信度与内容约定见 `docs/CREDIBILITY.md`。
 
 ---
 
 ## 开发指南
 
-### 启动开发
-
 ```bash
-# 开发模式（热重载）
-npm run dev
-
-# 构建预览
-npm run preview
-
-# 生产构建
-npm run build
+pnpm dev              # 开发
+pnpm build            # 构建并打包到 release/
+pnpm preview          # 预览
+pnpm icons            # 生成图标
+pnpm verify:content   # 精校库校验
+pnpm verify:phase2
+pnpm verify:credibility
 ```
 
-### 开发脚本
-
-```json
-{
-  "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build && electron-builder",
-    "preview": "electron-vite preview"
-  }
-}
-```
-
-### 环境变量
-
-创建 `.env` 文件（可选）：
+可选环境变量（`.env`）：
 
 ```env
-# 智谱 AI API Key（可选）
-VITE_ZHIPU_AI_API_KEY=your_api_key_here
-
-# 其他环境变量
-# VITE_API_BASE_URL=https://api.example.com
+VITE_ZHIPU_AI_API_KEY=
+VITE_DEEPSEEK_API_KEY=
 ```
 
 ---
 
 ## 构建打包
 
-### 开发构建
-
 ```bash
-npm run dev
+pnpm icons
+pnpm build
 ```
 
-### 生产构建
+产出目录：`release/`（见 `electron-builder.json`）。
 
-```bash
-npm run build
-```
+- macOS：DMG（x64 / arm64），图标 `build/icon.png`
+- Windows：NSIS，图标 `build/icon.ico`
 
-### 打包输出
+CI：`.github/workflows/release.yml` 在 tag `v*` 时构建 mac + win。
 
-```bash
-# macOS
-out/release/诗词日历-0.1.0-arm64.dmg
-
-# Windows (需要配置)
-out/release/诗词日历 Setup 0.1.0.exe
-```
+当前版本：`0.1.1`。
 
 ---
 
 ## API 参考
 
-### 智谱 AI 服务
+### 赏析（讲解真诗）
 
-**导入：**
 ```typescript
-import { generatePoem, testApiKey, getApiKey } from './services/zhipuAI';
+import { getAppreciation, getLocalAppreciation } from './services/ai/appreciation'
 ```
 
-**生成诗词：**
-```typescript
-const poem = await generatePoem({
-  style: '清新',
-  season: '春天',
-  theme: '山水',
-  length: 4,
-});
+### 创作工坊（现代新作，隔离每日真诗）
 
-// 返回：
-{
-  title: '春日山水',
-  author: 'AI诗人',
-  dynasty: '现代',
-  content: ['春山如黛草如烟', '绿水潺潺绕客船', ...],
-  ai_generated: true,
-  tags: ['清新', '春天', '山水', 'AI生成']
-}
+```typescript
+import { createWorkshopPoem } from './services/ai/workshop'
 ```
 
-**测试 API Key：**
-```typescript
-const result = await testApiKey(apiKey);
+### 每日选定 / 节气
 
-// 返回：
-{
-  success: true,
-  message: 'API Key 有效，智谱 AI 连接成功！',
-  samplePoem: { ... }
-}
+```typescript
+import { pickDailyPoem } from './engine/dailyPick'
+import { getNearestSolarTerm } from './engine/solarTerm'
 ```
 
-### 24节气服务
-
-**导入：**
-```typescript
-import { getNearestSolarTerm, getAllSolarTerms } from './utils/solarTerm';
-```
-
-**获取最近的节气：**
-```typescript
-const term = getNearestSolarTerm(new Date());
-
-// 返回：
-{
-  name: '立春',
-  date: new Date('2024-02-04'),
-  keywords: ['春天', '开始', '温暖', '生机'],
-  isToday: false
-}
-```
-
-**获取所有节气：**
-```typescript
-const terms = getAllSolarTerms(2024);
-
-// 返回 24 个节气的数组
-```
+详见 `docs/PHASE1.md`、`docs/PHASE2.md`。
 
 ---
 
 ## 常见问题
 
-### 1. 构建失败
+### 构建失败
 
-**问题：** `npm run build` 报错
-
-**解决方案：**
 ```bash
-# 清理缓存和重新安装
-rm -rf node_modules package-lock.json
-npm install
-
-# 清理构建输出
-rm -rf out dist release
-
-# 重新构建
-npm run build
+rm -rf node_modules out release
+pnpm install
+pnpm icons
+pnpm build
 ```
 
-### 2. 智谱 AI API 调用失败
+### AI 赏析 / 工坊失败
 
-**问题：** API Key 无效或网络错误
+- 检查设置中的智谱 / DeepSeek Key
+- 无 Key 时赏析回退本地预置；工坊会明确提示需配置 Key
 
-**解决方案：**
-- 检查 API Key 是否正确
-- 检查网络连接
-- 检查智谱 AI 服务状态
-- 尝试重新生成诗词
+### 开发端口占用
 
-### 3. 应用打包失败
-
-**问题：** Electron Builder 报错
-
-**解决方案：**
-```bash
-# 检查配置
-cat electron-builder.json
-
-# 尝试不同的打包命令
-npm run build -- --mac --universal
-```
-
-### 4. 开发服务器无法启动
-
-**问题：** `npm run dev` 报错
-
-**解决方案：**
-```bash
-# 清理端口占用
-lsof -ti:5173 | xargs kill -9
-
-# 重新启动
-npm run dev
-```
+electron-vite 默认端口冲突时，结束占用进程后重跑 `pnpm dev`。
 
 ---
 
@@ -394,67 +247,33 @@ MIT
 
 ## 联系方式
 
-- **GitHub**: https://github.com/reed-soul/poem-card-app
-- **Issues**: https://github.com/reed-soul/poem-card-app/issues
-
----
-
-## 贡献指南
-
-欢迎贡献！请先阅读贡献指南。
-
-### 开发流程
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
+- GitHub: https://github.com/reed-soul/poem-card-app
+- Issues: https://github.com/reed-soul/poem-card-app/issues
 
 ---
 
 ## 更新日志
 
-### 0.1.0 (2024-02-13)
+### 0.1.1
 
-**新增：**
-- ✅ 733首精选古诗词
-- ✅ 智谱 AI 智能生成
-- ✅ 24节气推荐算法
-- ✅ 完全用户设置界面
-- ✅ 中国风 UI 设计
-- ✅ macOS DMG 打包
-
-**优化：**
-- ✅ 智能推荐算法优化
-- ✅ 用户体验改进
-- ✅ 错误处理和回退机制
-
-**修复：**
-- ✅ 打包配置修复
-- ✅ 依赖版本更新
+- Phase 1：精校库、节气每日引擎、赏析增强
+- Phase 2：历史日历、分享、收藏、主题、创作工坊
+- 可信度：内容 P0/P1 修复、应用图标、分享防溢出、文档校正
 
 ---
 
 ## 未来计划
 
-- [ ] Windows 打包
-- [ ] 应用图标设计
-- [ ] 用户收藏功能
-- [ ] 诗词搜索功能
-- [ ] 诗词分享功能
-- [ ] 诗词翻译功能
-- [ ] 诗词背诵模式
-- [ ] 天气 API 集成
-- [ ] 更多 AI 模型支持
-- [ ] 离线模式
-- [ ] 主题切换功能
+- [ ] 精校库人工抽检 50+ 首（见 `docs/CREDIBILITY.md`）
+- [ ] 诗词搜索
+- [ ] 背诵模式
+- [ ] 付费边界（更大精校库 / 主题字体 / 工坊额度）
 
 ---
 
 ## 致谢
 
-- 诗词数据来源：chinese-poetry/chinese-poetry
-- UI 设计灵感：Anthropic Frontend Design
+- 诗词数据来源：chinese-poetry/chinese-poetry（经精校筛选）
 - 智谱 AI：https://open.bigmodel.cn/
-- Electron 框架：https://www.electronjs.org/
+- DeepSeek：https://www.deepseek.com/
+- Electron：https://www.electronjs.org/
