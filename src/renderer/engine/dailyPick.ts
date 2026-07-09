@@ -85,6 +85,10 @@ function buildReason(
  * 从精校库选定今日诗。
  * 同一 `date` 多次调用结果稳定。
  */
+function isDailyEligible(poem: CuratedPoem): boolean {
+  return poem.dailyEligible !== false
+}
+
 export function pickDailyPoem(
   poems: CuratedPoem[],
   options: DailyPickOptions = {},
@@ -101,8 +105,11 @@ export function pickDailyPoem(
   const preferredThemes = options.preferredThemes ?? []
   const preferredAuthors = options.preferredAuthors ?? []
 
-  const byTerm = poems.filter((p) => p.solarTerms.includes(termName))
-  const bySeason = poems.filter((p) => p.seasons.includes(season))
+  const eligible = poems.filter(isDailyEligible)
+  const poolSource = eligible.length > 0 ? eligible : poems
+
+  const byTerm = poolSource.filter((p) => p.solarTerms.includes(termName))
+  const bySeason = poolSource.filter((p) => p.seasons.includes(season))
 
   let pool: CuratedPoem[]
   let matchRank: DailyPickResult['matchRank']
@@ -114,7 +121,7 @@ export function pickDailyPoem(
     pool = bySeason
     matchRank = 'season'
   } else {
-    pool = poems
+    pool = poolSource
     matchRank = 'fallback'
   }
 

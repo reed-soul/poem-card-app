@@ -18,6 +18,7 @@ interface PoemCardProps {
   sharing?: boolean
   onToggleFavorite?: () => void
   onShare?: () => void
+  onCopy?: () => void
 }
 
 export default function PoemCard({
@@ -35,6 +36,7 @@ export default function PoemCard({
   sharing = false,
   onToggleFavorite,
   onShare,
+  onCopy,
 }: PoemCardProps) {
   const shouldReduceMotion = useReducedMotion()
 
@@ -78,6 +80,11 @@ export default function PoemCard({
               {modeLabel && (
                 <p className="text-secondary/80 text-[10px] font-serif tracking-[0.2em]">
                   {modeLabel}
+                </p>
+              )}
+              {poem.excerpt && (
+                <p className="text-muted/80 text-[10px] font-serif tracking-[0.2em]">
+                  节选
                 </p>
               )}
               {showSolarTerm && solarTermLabel && (
@@ -158,6 +165,14 @@ export default function PoemCard({
                 className="px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 text-muted hover:text-ink hover:border-ink/30 transition-colors disabled:opacity-40"
               >
                 {sharing ? '导出中' : '分享'}
+              </button>
+              <button
+                type="button"
+                onClick={onCopy}
+                aria-label="复制诗文"
+                className="px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 text-muted hover:text-ink hover:border-ink/30 transition-colors"
+              >
+                复制
               </button>
             </div>
 

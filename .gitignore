@@ -30,3 +30,7 @@ npm-debug.log*
 
 # Vite
 .vite
+
+# Icon intermediates (keep icon.png / icon.ico)
+build/icon-*.png
+build/icon.iconset/

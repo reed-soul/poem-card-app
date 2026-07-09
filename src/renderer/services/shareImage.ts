@@ -1,5 +1,6 @@
 /**
  * 纯 Canvas 分享长图：不截屏 UI，避免控件入镜。
+ * 正文自动缩放，禁止与印章/品牌重叠。
  */
 
 import type { CuratedPoem } from '../types/poem'
@@ -22,6 +23,8 @@ export interface ShareImageInput {
 
 const WIDTH = 1080
 const HEIGHT = 1440
+/** 正文不得超过此 Y，为印章与品牌留空 */
+const CONTENT_MAX_Y = HEIGHT - 320
 
 export const DEFAULT_SHARE_THEME: ShareThemeColors = {
   paper: '#f5f2e8',
@@ -31,7 +34,6 @@ export const DEFAULT_SHARE_THEME: ShareThemeColors = {
   secondary: '#c8102e',
 }
 
-/** 从 CSS 变量读取当前主题色（DOM 可用时） */
 export function readThemeColorsFromDom(): ShareThemeColors {
   if (typeof getComputedStyle === 'undefined' || typeof document === 'undefined') {
     return DEFAULT_SHARE_THEME
@@ -69,6 +71,38 @@ function wrapLines(
   return lines
 }
 
+function measureContentHeight(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  fontSize: number,
+  lineHeight: number,
+  maxWidth: number,
+): number {
+  ctx.font = `${fontSize}px "Noto Serif SC", "Songti SC", serif`
+  let rows = 0
+  for (const line of lines) {
+    rows += wrapLines(ctx, line, maxWidth).length
+  }
+  return rows * lineHeight
+}
+
+function fitContentTypography(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  maxWidth: number,
+  available: number,
+): { fontSize: number; lineHeight: number } {
+  let fontSize = 44
+  let lineHeight = 78
+  while (fontSize >= 26) {
+    lineHeight = Math.round(fontSize * 1.75)
+    const h = measureContentHeight(ctx, lines, fontSize, lineHeight, maxWidth)
+    if (h <= available) return { fontSize, lineHeight }
+    fontSize -= 2
+  }
+  return { fontSize: 26, lineHeight: Math.round(26 * 1.65) }
+}
+
 export function renderShareCanvas(input: ShareImageInput): HTMLCanvasElement {
   const {
     poem,
@@ -84,23 +118,19 @@ export function renderShareCanvas(input: ShareImageInput): HTMLCanvasElement {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas 不可用')
 
-  // 背景
   ctx.fillStyle = theme.paper
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
-  // 柔和光晕
   const glow = ctx.createRadialGradient(220, 180, 40, 220, 180, 420)
   glow.addColorStop(0, `${theme.accent}22`)
   glow.addColorStop(1, `${theme.accent}00`)
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, WIDTH, HEIGHT)
 
-  // 边框
   ctx.strokeStyle = `${theme.ink}18`
   ctx.lineWidth = 2
   ctx.strokeRect(64, 64, WIDTH - 128, HEIGHT - 128)
 
-  // 节气 / 日期
   ctx.fillStyle = theme.accent
   ctx.font = '28px "Noto Serif SC", "Songti SC", serif'
   ctx.textAlign = 'left'
@@ -111,40 +141,50 @@ export function renderShareCanvas(input: ShareImageInput): HTMLCanvasElement {
   ctx.textAlign = 'right'
   ctx.fillText(dateLabel, WIDTH - 120, 160)
 
-  // 装饰点
   ctx.beginPath()
   ctx.fillStyle = `${theme.secondary}99`
   ctx.arc(WIDTH / 2, 230, 5, 0, Math.PI * 2)
   ctx.fill()
 
-  // 标题
+  // 标题过长时缩小
   ctx.fillStyle = theme.ink
   ctx.textAlign = 'center'
-  ctx.font = 'bold 72px "Noto Serif SC", "Songti SC", serif'
+  let titleSize = 72
+  ctx.font = `bold ${titleSize}px "Noto Serif SC", "Songti SC", serif`
+  while (titleSize > 40 && ctx.measureText(poem.title).width > WIDTH - 200) {
+    titleSize -= 4
+    ctx.font = `bold ${titleSize}px "Noto Serif SC", "Songti SC", serif`
+  }
   ctx.fillText(poem.title, WIDTH / 2, 340)
 
-  // 作者
   ctx.fillStyle = theme.muted
   ctx.font = '32px "Noto Serif SC", "Songti SC", serif'
   const meta = [poem.dynasty, poem.author].filter(Boolean).join(' · ')
   ctx.fillText(meta, WIDTH / 2, 410)
 
-  // 正文
-  ctx.fillStyle = theme.ink
-  ctx.font = '44px "Noto Serif SC", "Songti SC", serif'
-  const lineHeight = 78
-  const contentTop = 520
+  const contentTop = 500
   const maxContentWidth = WIDTH - 240
+  const available = CONTENT_MAX_Y - contentTop
+  const { fontSize, lineHeight } = fitContentTypography(
+    ctx,
+    poem.content,
+    maxContentWidth,
+    available,
+  )
+
+  ctx.fillStyle = theme.ink
+  ctx.font = `${fontSize}px "Noto Serif SC", "Songti SC", serif`
   let y = contentTop
   for (const line of poem.content) {
     const wrapped = wrapLines(ctx, line, maxContentWidth)
     for (const w of wrapped) {
+      if (y > CONTENT_MAX_Y) break
       ctx.fillText(w, WIDTH / 2, y)
       y += lineHeight
     }
+    if (y > CONTENT_MAX_Y) break
   }
 
-  // 印章
   const sealX = WIDTH - 200
   const sealY = HEIGHT - 260
   ctx.save()
@@ -161,7 +201,6 @@ export function renderShareCanvas(input: ShareImageInput): HTMLCanvasElement {
   ctx.fillText('韵', 0, 24)
   ctx.restore()
 
-  // 品牌
   ctx.fillStyle = theme.muted
   ctx.font = '24px "Noto Serif SC", serif'
   ctx.textAlign = 'center'
@@ -170,7 +209,51 @@ export function renderShareCanvas(input: ShareImageInput): HTMLCanvasElement {
   return canvas
 }
 
+async function waitForFonts(): Promise<void> {
+  try {
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      await document.fonts.ready
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function buildPoemPlainText(input: {
+  poem: CuratedPoem
+  dateLabel: string
+  solarTermLabel?: string | null
+}): string {
+  const { poem, dateLabel, solarTermLabel } = input
+  const header = [dateLabel, solarTermLabel].filter(Boolean).join(' · ')
+  const meta = [poem.dynasty, poem.author].filter(Boolean).join(' · ')
+  return [
+    header,
+    `《${poem.title}》`,
+    meta,
+    '',
+    ...poem.content,
+    '',
+    '—— 诗词日历',
+  ]
+    .filter((line, i, arr) => !(line === '' && arr[i - 1] === ''))
+    .join('\n')
+}
+
+export async function copyPoemText(input: {
+  poem: CuratedPoem
+  dateLabel: string
+  solarTermLabel?: string | null
+}): Promise<void> {
+  const text = buildPoemPlainText(input)
+  if (!navigator.clipboard?.writeText) {
+    throw new Error('当前环境不支持复制到剪贴板')
+  }
+  await navigator.clipboard.writeText(text)
+}
+
 export async function downloadShareImage(input: ShareImageInput): Promise<void> {
+  await waitForFonts()
   const canvas = renderShareCanvas(input)
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob((b) => resolve(b), 'image/png'),

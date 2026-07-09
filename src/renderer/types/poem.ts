@@ -56,6 +56,10 @@ export interface CuratedPoem {
   appreciation?: string
   /** 出处说明，便于校对 */
   source?: string
+  /** 是否允许进入每日选定；缺省视为 true */
+  dailyEligible?: boolean
+  /** 节选作品；UI 可显示角标 */
+  excerpt?: boolean
 }
 
 export interface DailyPickResult {

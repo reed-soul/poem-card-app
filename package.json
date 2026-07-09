@@ -11,8 +11,10 @@
     "build": "electron-vite build && electron-builder",
     "preview": "electron-vite preview",
     "release": "./scripts/release.sh",
+    "icons": "node scripts/generate-icons.mjs",
     "verify:content": "node scripts/verify-phase1.mjs",
-    "verify:phase2": "node scripts/verify-phase2.mjs"
+    "verify:phase2": "node scripts/verify-phase2.mjs",
+    "verify:credibility": "node scripts/verify-credibility.mjs"
   },
   "keywords": [
     "poetry",
@@ -32,7 +34,9 @@
     "electron": "^34.0.3",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
+    "png-to-ico": "^3.0.2",
     "postcss": "^8.4.49",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "vite": "^5.4.0"

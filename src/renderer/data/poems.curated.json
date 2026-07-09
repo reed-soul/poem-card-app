@@ -452,8 +452,8 @@
     "source": "《全唐诗》"
   },
   {
-    "id": "唐-李白-秋浦歌-580985",
-    "title": "秋浦歌",
+    "id": "唐-李白-秋浦歌-其十五-2c4f35",
+    "title": "秋浦歌·其十五",
     "author": "李白",
     "dynasty": "唐",
     "content": [
@@ -464,7 +464,7 @@
     ],
     "form": "五言绝句",
     "themes": [
-      "忧国"
+      "闲适"
     ],
     "seasons": [
       "秋"
@@ -765,8 +765,8 @@
     "source": "《全唐诗》"
   },
   {
-    "id": "唐-李绅-悯农-becd1f",
-    "title": "悯农",
+    "id": "唐-李绅-悯农二首其二-ab68d1",
+    "title": "悯农二首其二",
     "author": "李绅",
     "dynasty": "唐",
     "content": [
@@ -791,8 +791,8 @@
     "source": "《全唐诗》"
   },
   {
-    "id": "唐-李绅-悯农二-be5e89",
-    "title": "悯农二",
+    "id": "唐-李绅-悯农二首其一-092e5b",
+    "title": "悯农二首其一",
     "author": "李绅",
     "dynasty": "唐",
     "content": [
@@ -1171,8 +1171,8 @@
     "source": "《全唐诗》"
   },
   {
-    "id": "唐-刘禹锡-浪淘沙-d707a2",
-    "title": "浪淘沙",
+    "id": "唐-刘禹锡-浪淘沙-九曲黄河-736dec",
+    "title": "浪淘沙·九曲黄河",
     "author": "刘禹锡",
     "dynasty": "唐",
     "content": [
@@ -2266,7 +2266,8 @@
     ],
     "solarTerms": [],
     "appreciation": "把酒问月，终落到但愿人长久。中秋词的巅峰，情理兼至。",
-    "source": "《东坡乐府》"
+    "source": "《东坡乐府》",
+    "dailyEligible": false
   },
   {
     "id": "宋-苏轼-念奴娇-赤壁怀古-b7722c",
@@ -2307,7 +2308,8 @@
     ],
     "solarTerms": [],
     "appreciation": "大江东去，怀周郎而自伤华发。豪放词的开山气象。",
-    "source": "《东坡乐府》"
+    "source": "《东坡乐府》",
+    "dailyEligible": false
   },
   {
     "id": "宋-苏轼-江城子-乙卯正月二十日夜记梦-218dc1",
@@ -2343,7 +2345,8 @@
       "立春"
     ],
     "appreciation": "十年生死，梦里相顾无言。悼亡词里最动人的一篇。",
-    "source": "《东坡乐府》"
+    "source": "《东坡乐府》",
+    "dailyEligible": false
   },
   {
     "id": "宋-苏轼-江城子-密州出猎-ad65c7",
@@ -2377,11 +2380,12 @@
     ],
     "solarTerms": [],
     "appreciation": "出猎的豪情里，仍有报国的期待。东坡的另一面狂放。",
-    "source": "《东坡乐府》"
+    "source": "《东坡乐府》",
+    "dailyEligible": false
   },
   {
-    "id": "宋-苏轼-浣溪沙-b5b368",
-    "title": "浣溪沙",
+    "id": "宋-苏轼-浣溪沙-游蕲水清泉寺-d5c647",
+    "title": "浣溪沙·游蕲水清泉寺",
     "author": "苏轼",
     "dynasty": "宋",
     "content": [
@@ -2405,8 +2409,8 @@
     "source": "《东坡乐府》"
   },
   {
-    "id": "宋-苏轼-蝶恋花-b85cbe",
-    "title": "蝶恋花",
+    "id": "宋-苏轼-蝶恋花-花褪残红-c31d0d",
+    "title": "蝶恋花·花褪残红",
     "author": "苏轼",
     "dynasty": "宋",
     "content": [
@@ -2717,7 +2721,8 @@
     ],
     "solarTerms": [],
     "appreciation": "错错错、莫莫莫，沈园之痛写到字字泣血。",
-    "source": "《渭南文集》"
+    "source": "《渭南文集》",
+    "dailyEligible": false
   },
   {
     "id": "宋-陆游-卜算子-咏梅-8b9ee1",
@@ -3133,36 +3138,6 @@
     "source": "《小仓山房诗集》"
   },
   {
-    "id": "明-张岱-湖心亭看雪-1dba3f",
-    "title": "湖心亭看雪",
-    "author": "张岱",
-    "dynasty": "明",
-    "content": [
-      "雾凇沆砀",
-      "天与云与山与水",
-      "上下一白",
-      "湖上影子",
-      "惟长堤一痕",
-      "湖心亭一点",
-      "与余舟一芥",
-      "舟中人两三粒而已"
-    ],
-    "form": "古体",
-    "themes": [
-      "山水",
-      "闲适"
-    ],
-    "seasons": [
-      "冬"
-    ],
-    "solarTerms": [
-      "大雪",
-      "冬至"
-    ],
-    "appreciation": "一痕一点一芥两三粒，雪湖的空寒被写到极简。",
-    "source": "《陶庵梦忆》"
-  },
-  {
     "id": "清-纳兰性德-长相思-49c65f",
     "title": "长相思",
     "author": "纳兰性德",
@@ -3357,7 +3332,8 @@
     ],
     "solarTerms": [],
     "appreciation": "叠字开篇，愁到「怎一个愁字了得」。南渡后的凄楚。",
-    "source": "《漱玉词》"
+    "source": "《漱玉词》",
+    "dailyEligible": false
   },
   {
     "id": "宋-李清照-如梦令-af3913",
@@ -3524,11 +3500,10 @@
       "冬",
       "春"
     ],
-    "solarTerms": [
-      "立春"
-    ],
+    "solarTerms": [],
     "appreciation": "众里寻他、灯火阑珊。元夕繁华里最安静的相遇。",
-    "source": "《稼轩长短句》"
+    "source": "《稼轩长短句》",
+    "dailyEligible": false
   },
   {
     "id": "宋-辛弃疾-西江月-夜行黄沙道中-e6a56f",
@@ -3629,7 +3604,8 @@
     ],
     "solarTerms": [],
     "appreciation": "金戈铁马与廉颇老矣并置，北固亭上的家国苍凉。",
-    "source": "《稼轩长短句》"
+    "source": "《稼轩长短句》",
+    "dailyEligible": false
   },
   {
     "id": "宋-辛弃疾-丑奴儿-书博山道中壁-2b84dc",
@@ -3748,7 +3724,8 @@
     ],
     "solarTerms": [],
     "appreciation": "杨柳岸晓风残月，酒醒后的离别名句，婉约到极致。",
-    "source": "《乐章集》"
+    "source": "《乐章集》",
+    "dailyEligible": false
   },
   {
     "id": "宋-柳永-蝶恋花-伫倚危楼风细细-d0ac67",
@@ -3817,11 +3794,12 @@
     ],
     "solarTerms": [],
     "appreciation": "三秋桂子、十里荷花，钱塘繁华的长卷。",
-    "source": "《乐章集》"
+    "source": "《乐章集》",
+    "dailyEligible": false
   },
   {
-    "id": "宋-晏殊-浣溪沙-350ac3",
-    "title": "浣溪沙",
+    "id": "宋-晏殊-浣溪沙-一曲新词酒一杯-614d5b",
+    "title": "浣溪沙·一曲新词酒一杯",
     "author": "晏殊",
     "dynasty": "宋",
     "content": [
@@ -3845,8 +3823,8 @@
     "source": "《珠玉词》"
   },
   {
-    "id": "宋-晏殊-蝶恋花-ff46a0",
-    "title": "蝶恋花",
+    "id": "宋-晏殊-蝶恋花-槛菊愁烟兰泣露-595b56",
+    "title": "蝶恋花·槛菊愁烟兰泣露",
     "author": "晏殊",
     "dynasty": "宋",
     "content": [
@@ -4012,8 +3990,8 @@
     "source": "《南唐二主词》"
   },
   {
-    "id": "五代-李煜-浪淘沙-e3d8b1",
-    "title": "浪淘沙",
+    "id": "五代-李煜-浪淘沙-帘外雨潺潺-4a8611",
+    "title": "浪淘沙·帘外雨潺潺",
     "author": "李煜",
     "dynasty": "五代",
     "content": [
@@ -4280,7 +4258,7 @@
       "不可断绝",
       "越陌度阡",
       "枉用相存",
-      "契阔谈讌",
+      "契阔谈宴",
       "心念旧恩",
       "月明星稀",
       "乌鹊南飞",
@@ -4301,7 +4279,8 @@
     ],
     "solarTerms": [],
     "appreciation": "对酒当歌、周公吐哺，英雄的忧思与求贤之心。",
-    "source": "《魏武帝集》"
+    "source": "《魏武帝集》",
+    "dailyEligible": false
   },
   {
     "id": "汉-曹操-观沧海-2cf32b",
@@ -4334,7 +4313,8 @@
     ],
     "solarTerms": [],
     "appreciation": "日月星汉若出沧海，写景即写胸襟。",
-    "source": "《魏武帝集》"
+    "source": "《魏武帝集》",
+    "dailyEligible": false
   },
   {
     "id": "汉-曹操-龟虽寿-561d6d",
@@ -4367,11 +4347,12 @@
     ],
     "solarTerms": [],
     "appreciation": "老骥伏枥，志在千里。暮年壮心的宣言。",
-    "source": "《魏武帝集》"
+    "source": "《魏武帝集》",
+    "dailyEligible": false
   },
   {
-    "id": "魏晋-陶渊明-归园田居-fe077d",
-    "title": "归园田居",
+    "id": "魏晋-陶渊明-归园田居-其三-07f1b9",
+    "title": "归园田居·其三",
     "author": "陶渊明",
     "dynasty": "魏晋",
     "content": [
@@ -4475,11 +4456,12 @@
     ],
     "solarTerms": [],
     "appreciation": "桃花源诗，理想国的农耕图景与隐逸之思。",
-    "source": "《陶渊明集》"
+    "source": "《陶渊明集》",
+    "dailyEligible": false
   },
   {
-    "id": "魏晋-陶渊明-读山海经-785319",
-    "title": "读山海经",
+    "id": "魏晋-陶渊明-读山海经-其十-a53f61",
+    "title": "读山海经·其十",
     "author": "陶渊明",
     "dynasty": "魏晋",
     "content": [
@@ -4505,8 +4487,8 @@
     "source": "《陶渊明集》"
   },
   {
-    "id": "南北朝-北朝民歌-木兰诗-4c8ffa",
-    "title": "木兰诗",
+    "id": "南北朝-北朝民歌-木兰诗-节选--fcc2df",
+    "title": "木兰诗（节选）",
     "author": "北朝民歌",
     "dynasty": "南北朝",
     "content": [
@@ -4536,12 +4518,14 @@
       "冬"
     ],
     "solarTerms": [],
-    "appreciation": "节选开篇：替父从军的起因，木兰故事的起点。",
-    "source": "《乐府诗集》"
+    "appreciation": "节选开篇：替父从军的起因。全诗较长，此处仅录起始，便于卡片阅读。",
+    "source": "《乐府诗集》",
+    "excerpt": true,
+    "dailyEligible": false
   },
   {
-    "id": "唐-李白-子夜吴歌-9c0e55",
-    "title": "子夜吴歌",
+    "id": "唐-李白-子夜吴歌-秋歌-b3cd18",
+    "title": "子夜吴歌·秋歌",
     "author": "李白",
     "dynasty": "唐",
     "content": [
@@ -4611,8 +4595,8 @@
     "source": "《全唐诗》"
   },
   {
-    "id": "唐-李白-宣州谢脁楼饯别校书叔云-b5d06d",
-    "title": "宣州谢脁楼饯别校书叔云",
+    "id": "唐-李白-宣州谢朓楼饯别校书叔云-b1b880",
+    "title": "宣州谢朓楼饯别校书叔云",
     "author": "李白",
     "dynasty": "唐",
     "content": [
@@ -4641,7 +4625,8 @@
     ],
     "solarTerms": [],
     "appreciation": "抽刀断水、举杯消愁，不称意时的豪放与无奈。",
-    "source": "《全唐诗》"
+    "source": "《全唐诗》",
+    "dailyEligible": false
   },
   {
     "id": "唐-李白-行路难-19e13d",
@@ -4673,7 +4658,8 @@
     ],
     "solarTerms": [],
     "appreciation": "长风破浪会有时，在歧路茫然之后仍给出希望。",
-    "source": "《全唐诗》"
+    "source": "《全唐诗》",
+    "dailyEligible": false
   },
   {
     "id": "唐-李白-将进酒-5225dd",
@@ -4722,7 +4708,8 @@
     ],
     "solarTerms": [],
     "appreciation": "天生我材必有用，黄河与白发之间的纵酒放歌。",
-    "source": "《全唐诗》"
+    "source": "《全唐诗》",
+    "dailyEligible": false
   },
   {
     "id": "唐-杜甫-茅屋为秋风所破歌-09eb28",
@@ -4764,7 +4751,8 @@
     ],
     "solarTerms": [],
     "appreciation": "广厦千万间，大庇天下寒士。推己及人的儒者情怀。",
-    "source": "《全唐诗》"
+    "source": "《全唐诗》",
+    "dailyEligible": false
   },
   {
     "id": "唐-杜甫-石壕吏-54897b",
@@ -4806,7 +4794,8 @@
     ],
     "solarTerms": [],
     "appreciation": "夜捉人、老妇应役，吏治与战乱下的民生实录。",
-    "source": "《全唐诗》"
+    "source": "《全唐诗》",
+    "dailyEligible": false
   },
   {
     "id": "唐-杜甫-闻官军收河南河北-5850f8",

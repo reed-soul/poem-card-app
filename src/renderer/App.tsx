@@ -17,6 +17,7 @@ import {
   saveProviderApiKey,
 } from './services/ai/appreciation'
 import {
+  copyPoemText,
   downloadShareImage,
   readThemeColorsFromDom,
 } from './services/shareImage'
@@ -147,6 +148,20 @@ function App() {
     }
   }
 
+  const handleCopy = async () => {
+    if (!displayedPoem) return
+    try {
+      await copyPoemText({
+        poem: displayedPoem,
+        dateLabel,
+        solarTermLabel:
+          cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null,
+      })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '复制失败')
+    }
+  }
+
   const navBtn =
     'px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 bg-white/30 backdrop-blur-md text-muted hover:text-ink hover:border-ink/30 transition-colors'
 
@@ -195,6 +210,7 @@ function App() {
             setFavorited(next.includes(displayedPoem.id))
           }}
           onShare={handleShare}
+          onCopy={handleCopy}
         />
       )}
 
