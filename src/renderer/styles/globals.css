@@ -2,6 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+:root[data-theme='spring'] {
+  --color-paper: #f5f2e8;
+  --color-paper-white: #faf9f6;
+  --color-ink: #1a1a1a;
+  --color-muted: #7a7a7a;
+  --color-accent: #d4af37;
+  --color-secondary: #c8102e;
+  --color-surface: #f3efe6;
+  --color-surface-mid: #f7f4ee;
+  --color-surface-end: #ebe4d8;
+  --color-glow-gold: rgba(212, 175, 55, 0.12);
+  --color-glow-red: rgba(200, 16, 46, 0.06);
+  --color-card-border: rgba(255, 255, 255, 0.4);
+}
+
+:root[data-theme='night'] {
+  --color-paper: #1c1a17;
+  --color-paper-white: #24211c;
+  --color-ink: #f0e6d2;
+  --color-muted: #a39886;
+  --color-accent: #c6a35a;
+  --color-secondary: #d64545;
+  --color-surface: #12100e;
+  --color-surface-mid: #181511;
+  --color-surface-end: #0e0c0a;
+  --color-glow-gold: rgba(198, 163, 90, 0.14);
+  --color-glow-red: rgba(214, 69, 69, 0.1);
+  --color-card-border: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme='plain'] {
+  --color-paper: #f7f7f5;
+  --color-paper-white: #ffffff;
+  --color-ink: #222222;
+  --color-muted: #8a8a8a;
+  --color-accent: #6b6b6b;
+  --color-secondary: #333333;
+  --color-surface: #f4f4f2;
+  --color-surface-mid: #fafafa;
+  --color-surface-end: #eeeeec;
+  --color-glow-gold: rgba(0, 0, 0, 0.03);
+  --color-glow-red: rgba(0, 0, 0, 0.02);
+  --color-card-border: rgba(0, 0, 0, 0.06);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -12,9 +58,25 @@ body {
   font-family: 'Noto Serif SC', 'STSong', 'SimSun', serif;
   overflow: hidden;
   background: transparent;
+  color: var(--color-ink);
 }
 
 #root {
   width: 100vw;
   height: 100vh;
+}
+
+.app-shell {
+  background: linear-gradient(
+    to bottom,
+    var(--color-surface),
+    var(--color-surface-mid),
+    var(--color-surface-end)
+  );
+}
+
+.app-shell-glow {
+  background-image:
+    radial-gradient(ellipse at 20% 0%, var(--color-glow-gold), transparent 50%),
+    radial-gradient(ellipse at 80% 100%, var(--color-glow-red), transparent 45%);
 }

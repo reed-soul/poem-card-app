@@ -1,18 +1,23 @@
 import { useReducedMotion, motion } from 'framer-motion'
 import type { CuratedPoem } from '../types/poem'
 
+export type PoemCardMode = 'daily' | 'history' | 'favorite'
+
 interface PoemCardProps {
   poem: CuratedPoem
   dateLabel: string
   solarTermLabel?: string | null
   reason?: string | null
   appreciation?: string | null
+  mode?: PoemCardMode
   showSolarTerm?: boolean
   showDynasty?: boolean
   showAuthor?: boolean
   showReason?: boolean
   favorited?: boolean
+  sharing?: boolean
   onToggleFavorite?: () => void
+  onShare?: () => void
 }
 
 export default function PoemCard({
@@ -21,14 +26,20 @@ export default function PoemCard({
   solarTermLabel,
   reason,
   appreciation,
+  mode = 'daily',
   showSolarTerm = true,
   showDynasty = true,
   showAuthor = true,
   showReason = true,
   favorited = false,
+  sharing = false,
   onToggleFavorite,
+  onShare,
 }: PoemCardProps) {
   const shouldReduceMotion = useReducedMotion()
+
+  const modeLabel =
+    mode === 'favorite' ? '收藏' : mode === 'history' ? '往日' : null
 
   return (
     <main
@@ -36,7 +47,7 @@ export default function PoemCard({
       tabIndex={-1}
       className="relative w-full h-full flex items-center justify-center overflow-hidden"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-paper via-paper-white to-stone-100/80 opacity-60 z-0" />
+      <div className="absolute inset-0 bg-gradient-to-br from-paper via-paper-white to-transparent opacity-60 z-0" />
       {!shouldReduceMotion && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -50,8 +61,9 @@ export default function PoemCard({
         initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: 'easeOut' }}
-        className="relative z-10 w-[88%] max-w-md bg-paper/92 backdrop-blur-2xl rounded-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden"
-        aria-label={`今日诗词《${poem.title}》`}
+        className="relative z-10 w-[88%] max-w-md bg-paper/92 backdrop-blur-2xl rounded-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border overflow-hidden"
+        style={{ borderColor: 'var(--color-card-border)' }}
+        aria-label={`诗词《${poem.title}》`}
       >
         <div
           className="absolute inset-0 opacity-40 pointer-events-none mix-blend-multiply"
@@ -62,7 +74,12 @@ export default function PoemCard({
 
         <div className="relative px-8 pt-10 pb-8 flex flex-col items-center min-h-[520px] text-center">
           <header className="absolute top-5 inset-x-5 flex items-start justify-between gap-3">
-            <div className="text-left">
+            <div className="text-left space-y-1">
+              {modeLabel && (
+                <p className="text-secondary/80 text-[10px] font-serif tracking-[0.2em]">
+                  {modeLabel}
+                </p>
+              )}
               {showSolarTerm && solarTermLabel && (
                 <p className="text-accent/90 text-xs font-serif tracking-[0.18em]">
                   {solarTermLabel}
@@ -98,7 +115,7 @@ export default function PoemCard({
             ))}
           </div>
 
-          {showReason && reason && (
+          {showReason && reason && mode !== 'favorite' && (
             <p className="text-xs text-muted/70 font-serif tracking-wide mb-4 max-w-[90%]">
               {reason}
             </p>
@@ -118,20 +135,31 @@ export default function PoemCard({
             </details>
           )}
 
-          <footer className="mt-auto w-full flex items-end justify-between pt-2">
-            <button
-              type="button"
-              onClick={onToggleFavorite}
-              aria-pressed={favorited}
-              aria-label={favorited ? '取消收藏' : '收藏本诗'}
-              className={`px-3 py-2 text-xs font-serif tracking-widest rounded-md border transition-colors ${
-                favorited
-                  ? 'border-secondary/40 text-secondary bg-secondary/5'
-                  : 'border-muted/20 text-muted hover:text-ink hover:border-ink/30'
-              }`}
-            >
-              {favorited ? '已藏' : '收藏'}
-            </button>
+          <footer className="mt-auto w-full flex items-end justify-between pt-2 gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                aria-pressed={favorited}
+                aria-label={favorited ? '取消收藏' : '收藏本诗'}
+                className={`px-3 py-2 text-xs font-serif tracking-widest rounded-md border transition-colors ${
+                  favorited
+                    ? 'border-secondary/40 text-secondary bg-secondary/5'
+                    : 'border-muted/20 text-muted hover:text-ink hover:border-ink/30'
+                }`}
+              >
+                {favorited ? '已藏' : '收藏'}
+              </button>
+              <button
+                type="button"
+                onClick={onShare}
+                disabled={sharing}
+                aria-label="分享长图"
+                className="px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 text-muted hover:text-ink hover:border-ink/30 transition-colors disabled:opacity-40"
+              >
+                {sharing ? '导出中' : '分享'}
+              </button>
+            </div>
 
             <div
               className="w-10 h-10 border-[3px] border-double border-secondary rounded-md flex items-center justify-center rotate-12 mix-blend-multiply opacity-90"

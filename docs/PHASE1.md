@@ -45,4 +45,4 @@ node scripts/verify-phase1.mjs
 ## 旧资产
 
 - `poems精选.json`：历史粗库，**不再作为主数据源**
-- `services/zhipuAI.ts`：旧「生成诗词」实现，待后续删除或改作创作工坊
+- 旧「生成诗词」已移除；现代新作见 Phase 2 创作工坊（`docs/PHASE2.md`）

@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import PoemCard from './components/PoemCard'
+import PoemCard, { type PoemCardMode } from './components/PoemCard'
 import SettingsPanel from './components/SettingsPanel'
+import HistoryCalendar from './components/HistoryCalendar'
+import FavoritesPanel from './components/FavoritesPanel'
+import WorkshopPanel from './components/WorkshopPanel'
 import WindowControls from './components/WindowControls'
 import { curatedPoems } from './content/poems'
 import { isFavorite, toggleFavorite } from './content/favorites'
+import { isSameDay, markDateViewed, startOfDay } from './content/history'
 import { pickDailyPoem } from './engine/dailyPick'
 import {
   getAppreciation,
   getLocalAppreciation,
   saveProviderApiKey,
 } from './services/ai/appreciation'
-import { loadSettings, type UserSettings } from './types/settings'
-import type { DailyPickResult } from './types/poem'
+import {
+  downloadShareImage,
+  readThemeColorsFromDom,
+} from './services/shareImage'
+import {
+  applyThemeToDocument,
+  loadSettings,
+  type UserSettings,
+} from './types/settings'
+import type { CuratedPoem, DailyPickResult } from './types/poem'
 
 declare global {
   interface Window {
@@ -40,18 +52,35 @@ function buildSolarTermLabel(pick: DailyPickResult): string {
 
 function App() {
   const [settings, setSettings] = useState<UserSettings>(() => loadSettings())
+  const [viewDate, setViewDate] = useState<Date>(() => startOfDay())
   const [pick, setPick] = useState<DailyPickResult | null>(null)
+  const [overridePoem, setOverridePoem] = useState<CuratedPoem | null>(null)
   const [dateLabel, setDateLabel] = useState('')
   const [appreciation, setAppreciation] = useState<string | null>(null)
   const [favorited, setFavorited] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [showWorkshop, setShowWorkshop] = useState(false)
 
-  const refreshDaily = (nextSettings: UserSettings) => {
-    const now = new Date()
-    setDateLabel(format(now, 'yyyy年MM月dd日', { locale: zhCN }))
+  const cardMode: PoemCardMode = overridePoem
+    ? 'favorite'
+    : isSameDay(viewDate, startOfDay())
+      ? 'daily'
+      : 'history'
+
+  const displayedPoem = overridePoem ?? pick?.poem ?? null
+
+  const loadPoemForDate = (date: Date, nextSettings: UserSettings) => {
+    const day = startOfDay(date)
+    setViewDate(day)
+    setOverridePoem(null)
+    setDateLabel(format(day, 'yyyy年MM月dd日', { locale: zhCN }))
+    markDateViewed(day)
 
     const result = pickDailyPoem(curatedPoems, {
-      date: now,
+      date: day,
       preferredAuthors: nextSettings.preferences.favoriteAuthors,
       preferredThemes: nextSettings.preferences.favoriteThemes,
     })
@@ -78,29 +107,58 @@ function App() {
   }
 
   useEffect(() => {
-    refreshDaily(settings)
-    // 仅首屏；设置保存后由 onSaved 触发
+    applyThemeToDocument(settings.appearance.theme)
+    loadPoemForDate(startOfDay(), settings)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const openOverlay = async (kind: 'settings' | 'calendar' | 'favorites' | 'workshop') => {
+    await window.electronAPI?.enterSettings()
+    setShowSettings(kind === 'settings')
+    setShowCalendar(kind === 'calendar')
+    setShowFavorites(kind === 'favorites')
+    setShowWorkshop(kind === 'workshop')
+  }
+
+  const closeOverlay = () => {
+    window.electronAPI?.leaveSettings()
+    setShowSettings(false)
+    setShowCalendar(false)
+    setShowFavorites(false)
+    setShowWorkshop(false)
+  }
+
+  const handleShare = async () => {
+    if (!displayedPoem) return
+    setSharing(true)
+    try {
+      await downloadShareImage({
+        poem: displayedPoem,
+        dateLabel,
+        solarTermLabel:
+          cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null,
+        theme: readThemeColorsFromDom(),
+      })
+    } catch (error) {
+      console.error('share failed', error)
+      alert(error instanceof Error ? error.message : '分享导出失败')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const navBtn =
+    'px-3 py-2 text-xs font-serif tracking-widest rounded-md border border-muted/20 bg-white/30 backdrop-blur-md text-muted hover:text-ink hover:border-ink/30 transition-colors'
+
   return (
-    <div className="relative w-full h-full overflow-hidden bg-gradient-to-b from-[#f3efe6] via-[#f7f4ee] to-[#ebe4d8]">
-      <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(ellipse at 20% 0%, rgba(212,175,55,0.12), transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(200,16,46,0.06), transparent 45%)',
-        }}
-      />
+    <div className="relative w-full h-full overflow-hidden app-shell">
+      <div className="absolute inset-0 opacity-40 pointer-events-none app-shell-glow" />
 
       <WindowControls />
 
       <button
         type="button"
-        onClick={async () => {
-          await window.electronAPI?.enterSettings()
-          setShowSettings(true)
-        }}
+        onClick={() => openOverlay('settings')}
         className="absolute top-4 left-4 z-20 p-2 bg-white/10 backdrop-blur-md rounded-lg hover:bg-white/20 transition-all"
         title="设置"
         aria-label="打开设置"
@@ -116,33 +174,79 @@ function App() {
         </svg>
       </button>
 
-      {pick && (
+      {displayedPoem && (
         <PoemCard
-          poem={pick.poem}
+          poem={displayedPoem}
           dateLabel={dateLabel}
-          solarTermLabel={buildSolarTermLabel(pick)}
-          reason={pick.reason}
+          solarTermLabel={
+            cardMode === 'favorite' ? null : pick ? buildSolarTermLabel(pick) : null
+          }
+          reason={cardMode === 'favorite' ? null : pick?.reason}
           appreciation={appreciation}
+          mode={cardMode}
           showSolarTerm={settings.display.showSolarTerm}
           showDynasty={settings.display.showDynasty}
           showAuthor={settings.display.showAuthor}
           showReason={settings.display.showReason}
           favorited={favorited}
+          sharing={sharing}
           onToggleFavorite={() => {
-            const next = toggleFavorite(pick.poem.id)
-            setFavorited(next.includes(pick.poem.id))
+            const next = toggleFavorite(displayedPoem.id)
+            setFavorited(next.includes(displayedPoem.id))
           }}
+          onShare={handleShare}
         />
       )}
 
+      <nav
+        className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2"
+        aria-label="次级入口"
+      >
+        <button type="button" className={navBtn} onClick={() => openOverlay('calendar')}>
+          日历
+        </button>
+        <button type="button" className={navBtn} onClick={() => openOverlay('favorites')}>
+          收藏
+        </button>
+        <button
+          type="button"
+          className={`${navBtn} text-muted/70`}
+          onClick={() => openOverlay('workshop')}
+        >
+          创作
+        </button>
+      </nav>
+
       <SettingsPanel
         isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={closeOverlay}
         onSaved={(next) => {
           setSettings(next)
-          refreshDaily(next)
+          loadPoemForDate(viewDate, next)
         }}
       />
+
+      <HistoryCalendar
+        isOpen={showCalendar}
+        selectedDate={viewDate}
+        onClose={closeOverlay}
+        onSelectDate={(date) => loadPoemForDate(date, settings)}
+        onBackToToday={() => loadPoemForDate(startOfDay(), settings)}
+      />
+
+      <FavoritesPanel
+        isOpen={showFavorites}
+        onClose={closeOverlay}
+        onSelectPoem={(poem) => {
+          setOverridePoem(poem)
+          setDateLabel('收藏')
+          setFavorited(isFavorite(poem.id))
+          const local = getLocalAppreciation(poem)
+          setAppreciation(local.text)
+        }}
+      />
+
+      <WorkshopPanel isOpen={showWorkshop} onClose={closeOverlay} />
     </div>
   )
 }

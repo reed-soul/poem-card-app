@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import {
   DEFAULT_SETTINGS,
+  THEME_OPTIONS,
+  applyThemeToDocument,
   loadSettings,
   resetSettings,
   saveSettings,
+  type AppThemeId,
   type UserSettings,
 } from '../types/settings'
 import { saveProviderApiKey } from '../services/ai/appreciation'
@@ -62,6 +65,14 @@ export default function SettingsPanel({ isOpen, onClose, onSaved }: SettingsPane
     }
   }
 
+  const selectTheme = (theme: AppThemeId) => {
+    setSettings({
+      ...settings,
+      appearance: { ...settings.appearance, theme },
+    })
+    applyThemeToDocument(theme)
+  }
+
   return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
@@ -110,34 +121,63 @@ export default function SettingsPanel({ isOpen, onClose, onSaved }: SettingsPane
 
       <div className="p-8 overflow-y-auto flex-1 bg-white/30">
         {tab === 'display' && (
-          <section className="space-y-3">
-            {(
-              [
-                ['showSolarTerm', '显示节气'],
-                ['showDynasty', '显示朝代'],
-                ['showAuthor', '显示作者'],
-                ['showReason', '显示今日缘由'],
-              ] as const
-            ).map(([key, label]) => (
-              <label
-                key={key}
-                className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-muted/10 cursor-pointer"
-              >
-                <span>{label}</span>
-                <input
-                  type="checkbox"
-                  checked={settings.display[key]}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      display: { ...settings.display, [key]: e.target.checked },
-                    })
-                  }
-                  className="w-5 h-5 accent-secondary"
-                />
-              </label>
-            ))}
-          </section>
+          <div className="space-y-8">
+            <section>
+              <h3 className="text-lg mb-4">主题</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {THEME_OPTIONS.map((opt) => {
+                  const active = settings.appearance.theme === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => selectTheme(opt.id)}
+                      className={`px-3 py-4 rounded-xl border text-center transition-all ${
+                        active
+                          ? 'border-ink bg-ink text-paper'
+                          : 'border-muted/20 bg-white/50 text-ink/80 hover:border-ink/40'
+                      }`}
+                    >
+                      <span className="block text-sm tracking-widest">{opt.label}</span>
+                      <span className={`block text-[10px] mt-1 ${active ? 'text-paper/70' : 'text-muted'}`}>
+                        {opt.hint}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <h3 className="text-lg mb-2">显示元素</h3>
+              {(
+                [
+                  ['showSolarTerm', '显示节气'],
+                  ['showDynasty', '显示朝代'],
+                  ['showAuthor', '显示作者'],
+                  ['showReason', '显示今日缘由'],
+                ] as const
+              ).map(([key, label]) => (
+                <label
+                  key={key}
+                  className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-muted/10 cursor-pointer"
+                >
+                  <span>{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.display[key]}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        display: { ...settings.display, [key]: e.target.checked },
+                      })
+                    }
+                    className="w-5 h-5 accent-secondary"
+                  />
+                </label>
+              ))}
+            </section>
+          </div>
         )}
 
         {tab === 'taste' && (
@@ -209,7 +249,7 @@ export default function SettingsPanel({ isOpen, onClose, onSaved }: SettingsPane
         {tab === 'ai' && (
           <div className="space-y-6">
             <p className="text-sm text-muted leading-relaxed">
-              AI 只用于生成短赏析，不会改写或冒充古诗原作。无 Key 时使用精校库预置赏析。
+              AI 只用于短赏析增强与「创作工坊」现代新作，不会改写或冒充古诗原作。无 Key 时使用精校库预置赏析。
             </p>
             <div className="flex gap-2 p-1 bg-muted/10 rounded-xl">
               {(
@@ -271,6 +311,9 @@ export default function SettingsPanel({ isOpen, onClose, onSaved }: SettingsPane
                 </label>
               </div>
             )}
+            <p className="text-xs text-muted leading-relaxed">
+              创作工坊入口在主界面底栏「创作」。工坊产出强制标注「AI · 新作」，永不进入每日真诗与历史日历。
+            </p>
           </div>
         )}
       </div>
